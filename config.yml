@@ -1,0 +1,13 @@
+development:
+  db_hosts: [localhost]
+  db_port: 9042
+  db_username: ''
+  db_password: ''
+  db_keyspace: xadf
+
+production:
+  db_hosts: [localhost]
+  db_port: 9042
+  db_username: ''
+  db_password: ''
+  db_keyspace: xadf
