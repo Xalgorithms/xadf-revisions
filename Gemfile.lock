@@ -1,5 +1,5 @@
 GIT
-  remote: git://github.com/Xalgorithms/xa-rules.git
+  remote: https://github.com/Xalgorithms/xa-rules.git
   revision: 03dfad3e2eb2afde0a8554533488251d97d1cba7
   specs:
     xa-rules (0.1.0)
