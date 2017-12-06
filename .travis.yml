@@ -1,0 +1,12 @@
+sudo: required
+language: ruby
+rvm:
+- 2.4.2
+services:
+- docker
+script:
+- "./build_images.sh"
+notifications:
+  slack:
+    rooms:
+      secure: JTBqPSm6IgTXk3sUPOezXuNo9cMxVcxKRdam794c6d/SruAvAa94psU4ZAqC0c7PPKs+304o9SwIRUEXEaLwcR2vFQ6ieHH1VbBjVNLOdIZvEWUxar2w/fqZFkOB0eoIh5BZWJha2kS193F066/u/FqvfRC/a9E9bC+Znmyzqx5J716Ov/qwJSyzmxUeH5ZcsLz52ZtWTmrHhf5VqPzFuU+JYlqYmV2q4iahj5HXk9CRLlLX5aJ0a4/kZRobP1/Dkj1Zx1toIR+U5NpSDp8tbAW3tuDJGDsoUJKgxtYCjdAEenG9rhnOkiBjCfAtQIbRUSvfGb0JqKTf6BnhdtuOQklQVPCKpOEMlv/XVldtrraIGt8b+lO6Q0N0M/5rqErtgLb9c8EQSRg3BibkZQjahZ1KbFEnHK6IvqY7q1NajaVUyqBtM5QTUC181jlks2qMiaZqe/n60N9tLgDrJum2EXtAf7qLn/bY6cNNpIvNTwH9HADgn9lkCRKuFTiKDhI2D139xl+IMFOxv2m7srAfnhy65pQCVQtE1FLWRcRf0HIiTwxxydVboL077kDvfa3biyC5tQhAdkNIwY2gWiFpSIa7Urd8KtNxDiEPCmBh+SS4MKNyFC8IUt/Cd1kruXIxeZgJI1vhlkzzaFqtIo7zqi4afj+14SFcqpxCqev+1Ws=
