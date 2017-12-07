@@ -4,14 +4,18 @@ require 'xa/rules/parse'
 include XA::Rules::Parse
 
 class GitService
-  def self.init()
-    repo = Rugged::Repository.clone_at('https://github.com/hpilosyan/libgit2-test', File.join('.', 'libgit2-test'), bare: true)
+  def self.init(clone_url, repo_name)
+    repo = Rugged::Repository.clone_at(clone_url, File.join('.', repo_name), bare: true)
     # repo = Rugged::Repository.discover("./libgit2-test")
-    parse_all(repo, scan_all(repo))
+    success = parse_all(repo, scan_all(repo))
+
+    clean(repo_name)
+
+    success
   end
 
-  def self.clean()
-    FileUtils.rm_rf(File.join('.', 'libgit2-test'))
+  def self.clean(repo_name)
+    FileUtils.rm_rf(File.join('.', repo_name))
   end
 
   private
@@ -37,21 +41,24 @@ class GitService
   end
 
   def self.parse_all(repo, all)
+    all_lines = []
     all.each do |oid|
       blob = repo.lookup(oid)
-      blob.content.each_line do |line|
+      lines = blob.content.lines.map do |line|
         parse_single line.strip
       end
+
+      all_lines.concat lines
     end
 
-    clean()
+    all_lines.all?
   end
 
   def self.parse_single(line)
     begin
       parse line
     rescue
-      puts "Failed to parse"
+      false
     end
   end
 end

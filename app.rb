@@ -5,15 +5,18 @@ require 'sinatra/json'
 require 'sinatra/config_file'
 require 'rugged'
 
-require_relative "./git_service"
+require_relative "./services/git_service"
 
 # Used by Marathon healthcheck
 get "/status" do
   json(status: :live)
 end
 
-post "/trigger" do
-  GitService.init()
+post "/tag" do
+  tag = JSON.parse(request.body.read)
+  clone_url = tag["clone_url"]
+  repo_name = tag["repository"]["name"]
+  success = GitService.init(clone_url, repo_name)
 
-  json(status: :success)
+  json(success: success)
 end
