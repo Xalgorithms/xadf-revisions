@@ -14,8 +14,18 @@ end
 
 post "/tag" do
   tag = JSON.parse(request.body.read)
-  clone_url = tag["clone_url"]
-  repo_name = tag["repository"]["name"]
+
+  type = tag["ref_type"]
+
+  # The same 'Create' hook is responsible for both
+  # branch and tag creation. Ignore new branches
+  if type == "branch"
+    halt 404, "Not found"
+  end
+
+  repo = tag["repository"]
+  clone_url = repo["clone_url"]
+  repo_name = repo["name"]
   success = GitService.init(clone_url, repo_name)
 
   json(success: success)
