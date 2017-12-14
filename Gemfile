@@ -6,6 +6,7 @@ gem 'puma'
 gem "sinatra"
 gem 'sinatra-contrib'
 gem "rugged"
+gem "arangorb"
 
 gem 'xa-rules', git: 'https://github.com/Xalgorithms/xa-rules.git'
 
