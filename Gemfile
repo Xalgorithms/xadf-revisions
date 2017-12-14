@@ -7,6 +7,7 @@ gem "sinatra"
 gem 'sinatra-contrib'
 gem "rugged"
 gem "arangorb"
+gem "cassandra-driver"
 
 gem 'xa-rules', git: 'https://github.com/Xalgorithms/xa-rules.git'
 
