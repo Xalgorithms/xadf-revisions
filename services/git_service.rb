@@ -1,19 +1,14 @@
 require 'rugged'
 require 'xa/rules/parse'
-require_relative "./arango_service"
 
 include XA::Rules::Parse
 
 class GitService
   def self.init(clone_url, repo_name)
-    ArangoService.init()
-
     repo = Rugged::Repository.clone_at(clone_url, File.join('.', repo_name), bare: true)
     # repo = Rugged::Repository.discover("./libgit2-test")
     res = parse_all(repo, scan_all(repo))
 
-    rule_id = ArangoService.store_rule({items: res})
-    # TODO: Store rule_id in Cassandra
     clean(repo_name)
 
     res

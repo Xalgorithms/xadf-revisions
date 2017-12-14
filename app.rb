@@ -6,6 +6,8 @@ require 'sinatra/config_file'
 require 'rugged'
 
 require_relative "./services/git_service"
+require_relative "./services/arango_service"
+require_relative "./services/cassandra_service"
 
 config_file 'config.yml'
 
@@ -28,9 +30,14 @@ post "/tag" do
   repo = tag["repository"]
   clone_url = repo["clone_url"]
   repo_name = repo["name"]
-  success = GitService.init(clone_url, repo_name)
 
-  json(success: success)
+  parsed_rules = GitService.init(clone_url, repo_name)
+
+  CassandraService.init()
+  rule_id = CassandraService.store_effective_rule()
+
+  ArangoService.init()
+  ArangoService.store_rule(rule_id, parsed_rules)
+
+  json(success: parsed_rules)
 end
-
-GitService.init("https://github.com/hpilosyan/libgit2-test.git", "libgit2-test")

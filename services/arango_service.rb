@@ -15,9 +15,11 @@ class ArangoService
     @database = ArangoDatabase.new.retrieve
   end
 
-  def self.store_rule(rule)
+  def self.store_rule(key, rule)
     collection = @database["rules"]
-    res = collection.create_document document: rule
+    doc = {_key: key}.merge({items: rule})
+    puts doc
+    res = collection.create_document(document: doc)
 
     res.key
   end
