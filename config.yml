@@ -5,9 +5,27 @@ development:
   db_password: ''
   db_keyspace: xadf
 
+  arango_host: localhost
+  arango_port: '8529'
+  arango_username: ''
+  arango_password: ''
+  arango_db_name: 'xadf'
+
+  git_branch: 'master'
+  allowed_formats: [package, rule, table]
+
 production:
   db_hosts: [localhost]
   db_port: 9042
   db_username: ''
   db_password: ''
   db_keyspace: xadf
+
+  arango_host: localhost
+  arango_port: '8529'
+  arango_username: ''
+  arango_password: ''
+  arango_db_name: 'xadf'
+
+  git_branch: 'master'
+  allowed_formats: [package, rule, table]

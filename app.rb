@@ -7,6 +7,8 @@ require 'rugged'
 
 require_relative "./services/git_service"
 
+config_file 'config.yml'
+
 # Used by Marathon healthcheck
 get "/status" do
   json(status: :live)
@@ -30,3 +32,5 @@ post "/tag" do
 
   json(success: success)
 end
+
+GitService.init("https://github.com/hpilosyan/libgit2-test.git", "libgit2-test")
