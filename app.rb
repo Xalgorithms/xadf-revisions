@@ -31,13 +31,14 @@ post "/tag" do
   clone_url = repo["clone_url"]
   repo_name = repo["name"]
 
-  parsed_rules = GitService.init(clone_url, repo_name)
-
+  rules = GitService.init(clone_url, repo_name)
   CassandraService.init()
-  rule_id = CassandraService.store_effective_rule()
-
   ArangoService.init()
-  ArangoService.store_rule(rule_id, parsed_rules)
 
-  json(success: parsed_rules)
+  rules.each do |r|
+    rule_id = CassandraService.store_effective_rule(r[:meta])
+    ArangoService.store_rule(rule_id, r[:parsed])
+  end
+
+  json(success: rules)
 end

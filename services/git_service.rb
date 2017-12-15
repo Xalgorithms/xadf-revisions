@@ -60,18 +60,22 @@ class GitService
 
   def self.parse_all(repo, all)
     res = all.map do |id, files|
-      if invalid_package_files repo, files
+      rules_meta = get_meta_content repo, files
+
+      if invalid_package_files files, rules_meta
         return false
       end
 
       rule_file = files.find { |f| is_rule_file?(f[:name]) }
+      name = get_rule_file_name(rule_file[:name])
       oid = rule_file[:oid]
       blob = repo.lookup(oid)
+
       lines = blob.content.lines.map do |line|
         parse_single line.strip
       end
 
-      lines.all? ? lines : false
+      lines.all? ? { parsed: lines, meta: rules_meta[name]  } : false
     end
 
     res
@@ -81,17 +85,21 @@ class GitService
     File.basename name, ".*"
   end
 
-  def self.invalid_package_files(repo, files)
+  def self.get_meta_content(repo, files)
     meta_file = files.find { |f| is_package_file?(f[:name]) }
     meta_oid = meta_file[:oid]
 
     blob = repo.lookup(meta_oid)
 
     meta = JSON.parse(blob.content)
+
     rules = meta["rules"]
+  end
+
+  def self.invalid_package_files(files, rules_meta)
     rules_files = files
       .select { |f| is_rule_file? f[:name] }
-      .select { |f| rules.keys.include?(get_rule_file_name(f[:name]))}
+      .select { |f| rules_meta.keys.include?(get_rule_file_name(f[:name]))}
 
     rules_files.length == 0
   end
