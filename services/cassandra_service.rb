@@ -16,13 +16,28 @@ class CassandraService
     generator.uuid
   end
 
-  def self.store_effective_rule()
-    statement = @session.prepare(
-      "INSERT INTO xadf.effective_rules (rule_id) " \
-      "VALUES (?)"
-    )
+  def self.store_effective_rule(meta)
     rule_id = new_uuid
-    @session.execute(statement, arguments: [rule_id])
+    version = meta['version']
+    country = meta['jurisdiction']['country']
+    region = meta['jurisdiction']['region']
+    timezone = meta['effective'][0]['timezone']
+    starts = meta['effective'][0]['starts']
+    ends = meta['effective'][0]['ends']
+
+    statement = @session.prepare('INSERT INTO xadf.effective_rules JSON ?')
+
+    data = {
+      rule_id: rule_id,
+      version: version,
+      country: country,
+      region: region,
+      timezone: timezone,
+      starts: starts,
+      ends: ends
+    }
+
+    @session.execute(statement, arguments: [data.to_json])
 
     rule_id
   end
