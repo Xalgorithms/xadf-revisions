@@ -36,8 +36,9 @@ post "/tag" do
   ArangoService.init()
 
   rules.each do |r|
-    rule_id = CassandraService.store_effective_rule(r[:meta])
-    ArangoService.store_rule(rule_id, r[:parsed])
+    meta = r[:meta]
+    id = CassandraService.store_effective_rule(meta)
+    ArangoService.store_new_rule_version(id, meta["id"], meta["version"], r[:parsed])
   end
 
   json(success: rules)

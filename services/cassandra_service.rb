@@ -18,7 +18,6 @@ class CassandraService
 
   def self.store_effective_rule(meta)
     rule_id = new_uuid
-    version = meta['version']
     country = meta['jurisdiction']['country']
     region = meta['jurisdiction']['region']
     timezone = meta['effective'][0]['timezone']
@@ -29,7 +28,6 @@ class CassandraService
 
     data = {
       rule_id: rule_id,
-      version: version,
       country: country,
       region: region,
       timezone: timezone,
