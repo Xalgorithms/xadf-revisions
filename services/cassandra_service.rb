@@ -39,4 +39,54 @@ class CassandraService
 
     rule_id
   end
+
+  def self.extract_when_keys(d)
+    res = d.inject({}) do |accum, w|
+      whens = w["whens"]
+      whens.each do |key, arr|
+        if (!accum.key?(key))
+          accum[key] = []
+        end
+        arr.each do |expr|
+          accum[key].push({
+            key: expr["expr"]["left"]["value"],
+            value: expr["expr"]["right"]["value"],
+            op: expr["expr"]["op"]
+          })
+        end
+      end
+
+      accum
+    end
+
+    res
+  end
+
+  def self.store_when_keys(d)
+    sections = extract_when_keys(d)
+    sections.each do |section, arr|
+      query = "BEGIN BATCH "
+      arr.each do |o|
+        query = query + "INSERT INTO xadf.when_keys (section, key) VALUES('#{section}', '#{o[:key]}') IF NOT EXISTS;"
+      end
+      query = query + "APPLY BATCH;"
+
+      statement = @session.prepare(query)
+      @session.execute(statement)
+    end
+  end
+
+  def self.store_whens(id, d)
+    sections = extract_when_keys(d)
+    sections.each do |section, arr|
+      query = "BEGIN BATCH "
+      arr.each do |o|
+        query = query + "INSERT INTO xadf.whens (rule_id, section, key, operator, value) VALUES('#{id}', '#{section}', '#{o[:key]}', '#{o[:op]}', '#{o[:value]}');"
+      end
+      query = query + "APPLY BATCH;"
+
+      statement = @session.prepare(query)
+      @session.execute(statement)
+    end
+  end
 end

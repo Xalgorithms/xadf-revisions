@@ -38,6 +38,10 @@ post "/tag" do
   rules.each do |r|
     meta = r[:meta]
     id = CassandraService.store_effective_rule(meta)
+
+    CassandraService.store_when_keys(r[:parsed])
+    CassandraService.store_whens(id, r[:parsed])
+
     ArangoService.store_new_rule_version(id, meta["id"], meta["version"], r[:parsed])
   end
 
