@@ -1,13 +1,8 @@
-require 'rubygems'
-require 'bundler/setup'
 require 'sinatra'
 require 'sinatra/json'
 require 'sinatra/config_file'
-require 'rugged'
 
-require_relative "./services/git_service"
-require_relative "./services/arango_service"
-require_relative "./services/cassandra_service"
+require_relative './services/github'
 
 config_file 'config.yml'
 
@@ -16,30 +11,12 @@ get "/status" do
   json(status: :live)
 end
 
-post "/tag" do
-  tag = JSON.parse(request.body.read)
+github = Services::GitHub.new
 
-  type = tag["ref_type"]
-
-  # The same 'Create' hook is responsible for both
-  # branch and tag creation. Ignore new branches
-  if type == "branch"
-    halt 404, "Not found"
+post '/repositories' do
+  o = JSON.parse(request.body.read)
+  github.process(o['url']) do |packages|
   end
 
-  repo = tag["repository"]
-  clone_url = repo["clone_url"]
-  repo_name = repo["name"]
-
-  rules = GitService.init(clone_url, repo_name)
-  CassandraService.init()
-  ArangoService.init()
-
-  rules.each do |r|
-    meta = r[:meta]
-    id = CassandraService.store_effective_rule(meta)
-    ArangoService.store_new_rule_version(id, meta["id"], meta["version"], r[:parsed])
-  end
-
-  json(success: rules)
+  json(status: 'ok')
 end
