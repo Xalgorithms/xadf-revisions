@@ -57,11 +57,19 @@ module Services
       }
       pkg.fetch(pkg_section, {}).each do |thing_name, thing|
         id = build_id(@things[pkg_section]['prefix'], pkg_name, thing_name, thing['version'])
-        store_document('meta', id, thing.merge(name: thing_name, package: pkg_name, origin_url: origin_url, type: @things[pkg_section]['type']))
-        store_document(@things[pkg_section]['collection'], id, yield(thing.fetch('content', '')))
+        if !exists?(id)
+          store_document('meta', id, thing.merge(name: thing_name, package: pkg_name, origin_url: origin_url, type: @things[pkg_section]['type']))
+          store_document(@things[pkg_section]['collection'], id, yield(thing.fetch('content', '')))
+        else
+          p "# exists (id=#{id})"
+        end
       end
     end
 
+    def exists?(id)
+      @cl['meta'].count(public_id: id) > 0
+    end
+    
     def store_document(cn, id, doc)
       @cl[cn].insert_one(doc.merge(public_id: id))
       fns = @subscribers.fetch(cn, [])
