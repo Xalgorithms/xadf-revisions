@@ -1,9 +1,10 @@
 development:
-  db_hosts: [localhost]
-  db_port: 9042
-  db_username: ''
-  db_password: ''
-  db_keyspace: xadf
+  cassandra:
+    hosts: [localhost]
+    port: 9042
+    username: ''
+    password: ''
+    keyspace: xadf
 
   mongo:
     url: 'mongodb://127.0.0.1:27017/xadf'
@@ -12,11 +13,12 @@ development:
   allowed_formats: [package, rule, table]
 
 production:
-  db_hosts: [localhost]
-  db_port: 9042
-  db_username: ''
-  db_password: ''
-  db_keyspace: xadf
+  cassandra:
+    hosts: [localhost]
+    port: 9042
+    username: ''
+    password: ''
+    keyspace: xadf
 
   mongo:
     url: 'mongodb://127.0.0.1:27017/xadf'

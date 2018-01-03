@@ -9,9 +9,17 @@ module Services
   class Documents
     include XA::Rules::Parse
     
-    def initialize(opts, subscribers={})
+    def initialize(opts)
       @cl = Mongo::Client.new(opts['url'])
-      @subscribers = subscribers
+      @subscribers = {
+        'meta'   => [],
+        'rules'  => [],
+        'tables' => [],
+      }
+    end
+
+    def subscribe(name, fn)
+      @subscribers[name] << fn
     end
     
     def store_packages(origin_url, pkgs)
@@ -26,27 +34,38 @@ module Services
         end
       end
     end
+
+    def find_meta(id, &bl)
+      find_one('meta', id, &bl)
+    end
+    
+    def find_rule(id, &bl)
+      find_one('rules', id, &bl)
+    end
     
     private
+
+    def find_one(cn, id, &bl)
+      doc = @cl[cn].find(public_id: id).first
+      bl.call(doc) if bl && doc
+    end
     
     def store_thing(origin_url, pkg_name, pkg, pkg_section)
       @things ||= {
-        'rules'  => { 'prefix' => 'R', 'collection' => 'rules' },
-        'tables' => { 'prefix' => 'T', 'collection' => 'tables' },
+        'rules'  => { 'type' => 'rule', 'prefix' => 'R', 'collection' => 'rules' },
+        'tables' => { 'type' => 'table', 'prefix' => 'T', 'collection' => 'tables' },
       }
       pkg.fetch(pkg_section, {}).each do |thing_name, thing|
         id = build_id(@things[pkg_section]['prefix'], pkg_name, thing_name, thing['version'])
-        store_document('meta', id, thing.merge(name: thing_name, package: pkg_name, origin_url: origin_url))
+        store_document('meta', id, thing.merge(name: thing_name, package: pkg_name, origin_url: origin_url, type: @things[pkg_section]['type']))
         store_document(@things[pkg_section]['collection'], id, yield(thing.fetch('content', '')))
       end
     end
 
     def store_document(cn, id, doc)
       @cl[cn].insert_one(doc.merge(public_id: id))
-      fn = @subscribers.fetch(cn, nil)
-      if fn
-        fn.call(id)
-      end
+      fns = @subscribers.fetch(cn, [])
+      fns.each { |fn| fn.call(id) }
     end
     
     def build_id(prefix, pkg_name, thing_name, thing_ver)
