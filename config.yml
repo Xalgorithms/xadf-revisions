@@ -5,12 +5,9 @@ development:
   db_password: ''
   db_keyspace: xadf
 
-  arango_host: localhost
-  arango_port: '8529'
-  arango_username: ''
-  arango_password: ''
-  arango_db_name: 'xadf'
-
+  mongo:
+    url: 'mongodb://127.0.0.1:27017/xadf'
+  
   git_branch: 'master'
   allowed_formats: [package, rule, table]
 
@@ -21,11 +18,8 @@ production:
   db_password: ''
   db_keyspace: xadf
 
-  arango_host: localhost
-  arango_port: '8529'
-  arango_username: ''
-  arango_password: ''
-  arango_db_name: 'xadf'
-
+  mongo:
+    url: 'mongodb://127.0.0.1:27017/xadf'
+  
   git_branch: 'master'
   allowed_formats: [package, rule, table]

@@ -3,6 +3,7 @@ require 'sinatra/json'
 require 'sinatra/config_file'
 
 require_relative './services/github'
+require_relative './services/documents'
 
 config_file 'config.yml'
 
@@ -12,10 +13,12 @@ get "/status" do
 end
 
 github = Services::GitHub.new
+documents = Services::Documents.new(settings.mongo)
 
 post '/repositories' do
   o = JSON.parse(request.body.read)
   github.process(o['url']) do |packages|
+    documents.store_packages(o['url'], packages)
   end
 
   json(status: 'ok')
