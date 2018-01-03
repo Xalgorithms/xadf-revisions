@@ -9,8 +9,9 @@ module Services
   class Documents
     include XA::Rules::Parse
     
-    def initialize(opts)
+    def initialize(opts, subscribers={})
       @cl = Mongo::Client.new(opts['url'])
+      @subscribers = subscribers
     end
     
     def store_packages(origin_url, pkgs)
@@ -35,8 +36,16 @@ module Services
       }
       pkg.fetch(pkg_section, {}).each do |thing_name, thing|
         id = build_id(@things[pkg_section]['prefix'], pkg_name, thing_name, thing['version'])
-        @cl['meta'].insert_one(thing.merge(public_id: id, name: thing_name, package: pkg_name, origin_url: origin_url))
-        @cl[@things[pkg_section]['collection']].insert_one(yield(thing.fetch('content', '')).merge(public_id: id))
+        store_document('meta', id, thing.merge(name: thing_name, package: pkg_name, origin_url: origin_url))
+        store_document(@things[pkg_section]['collection'], id, yield(thing.fetch('content', '')))
+      end
+    end
+
+    def store_document(cn, id, doc)
+      @cl[cn].insert_one(doc.merge(public_id: id))
+      fn = @subscribers.fetch(cn, nil)
+      if fn
+        fn.call(id)
       end
     end
     
