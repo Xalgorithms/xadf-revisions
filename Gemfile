@@ -6,8 +6,8 @@ gem 'activesupport'
 gem 'mongo'
 gem 'multi_json'
 gem 'puma'
-gem 'sinatra'
-gem 'sinatra-contrib'
+gem 'sinatra', "~> 2.0.1"
+gem 'sinatra-contrib', "~> 2.0.1"
 gem 'rugged'
 gem 'uuid'
 gem 'cassandra-driver'
