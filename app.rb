@@ -21,11 +21,11 @@ translate = Services::Translate.new(documents, cassandra)
 
 post '/repositories' do
   o = JSON.parse(request.body.read)
-  github.process(o['url']) do |packages|
+  res = github.process(o['url']) do |packages|
     documents.store_packages(o['url'], packages)
   end
 
-  json(status: 'ok')
+  json(res.merge(status: 'ok'))
 end
 
 post '/events' do

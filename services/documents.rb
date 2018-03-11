@@ -26,11 +26,16 @@ module Services
       ids = { }
 
       pkgs.each do |pkg_name, pkg|
-        store_thing(origin_url, pkg_name, pkg, 'rules') do |content|
-          parse(content)
-        end
-        store_thing(origin_url, pkg_name, pkg, 'tables') do |content|
-          { table: CSV.parse(content) }
+        pkg_info = pkg.fetch('package', {})
+        store_package_version(pkg_name, pkg_info['revision']) do
+          rule_ids = store_thing(origin_url, pkg_name, pkg, 'rules') do |content|
+            parse(content)
+          end
+          table_ids = store_thing(origin_url, pkg_name, pkg, 'tables') do |content|
+            { table: CSV.parse(content) }
+          end
+
+          { rules: rule_ids, tables: table_ids }
         end
       end
     end
@@ -49,20 +54,37 @@ module Services
       doc = @cl[cn].find(public_id: id).first
       bl.call(doc) if bl && doc
     end
+
+    def store_package_version(name, revision)
+      doc = @cl['packages'].find({ name: name }).first
+      contents = yield
+      if !doc
+        puts "# creating new package (name=#{name}; version=#{revision})"
+        @cl['packages'].insert_one({ name: name, revisions: [{ version: revision, contents: contents }] })
+      elsif doc && !doc['revisions'].find { |rev| rev['version'] == revision }
+        puts "# updating package (name=#{name}; version=#{revision})"
+        @cl['packages'].update_one({ '_id' => doc['_id'] }, '$push' => { 'revisions' => { version: revision, contents: contents } })
+      else
+        puts "? package version already exists, nothing to do (name=#{name}; version=#{revision})"
+      end
+    end
     
-    def store_thing(origin_url, pkg_name, pkg, pkg_section)
+    def store_thing(origin_url, pkg_name, pkg, pkg_section, &bl)
       @things ||= {
-        'rules'  => { 'type' => 'rule', 'prefix' => 'R', 'collection' => 'rules' },
-        'tables' => { 'type' => 'table', 'prefix' => 'T', 'collection' => 'tables' },
+        'rules'   => { 'type' => 'rule',    'prefix' => 'R', 'collection' => 'rules' },
+        'tables'  => { 'type' => 'table',   'prefix' => 'T', 'collection' => 'tables' },
       }
-      pkg.fetch(pkg_section, {}).each do |thing_name, thing|
+      ids = pkg.fetch(pkg_section, {}).map do |thing_name, thing|
         id = build_id(@things[pkg_section]['prefix'], pkg_name, thing_name, thing['version'])
         if !exists?(id)
           store_document('meta', id, thing.merge(name: thing_name, package: pkg_name, origin_url: origin_url, type: @things[pkg_section]['type']))
-          store_document(@things[pkg_section]['collection'], id, yield(thing.fetch('content', '')))
+          content = thing.fetch('content', '')
+          store_document(@things[pkg_section]['collection'], id, bl ? bl.call(content) : content)
         else
           p "# exists (id=#{id})"
         end
+        
+        id
       end
     end
 

@@ -7,18 +7,22 @@ module Services
       path = Pathname.new(URI.parse(url).path)
       dn = path.basename('.git').to_s
       repo = Rugged::Repository.clone_at(url, dn, bare: true)
-      br = repo.branches['master']
 
-      packages = {}
-      br.target.tree.each_tree do |tr|
-        packages = packages.merge(tr[:name] => process_package(repo, tr))
+      versions = find_versions_using_tags(repo)
+
+      versions.each do |ver|
+        packages = {}
+        ver.tag.target.tree.each_tree do |tr|
+          pkg = process_package(repo, tr).merge('package' => { 'name' => tr[:name], 'revision' => ver.rev })
+          packages = packages.merge(tr[:name] => pkg)
+        end
+
+        yield(packages)
       end
 
       FileUtils.rm_rf(dn)
 
-      yield(packages)
-
-      packages
+      { versions: versions.map(&:rev) }
     end
 
     def event(name, o)
@@ -47,6 +51,15 @@ module Services
 
     def process_package(repo, tr)
       interpret_contents(repo, build_package_contents(repo, tr))
+    end
+
+    def find_versions_using_tags(repo)
+      versions = []
+      repo.tags.each_name do |n|
+        m = /^v([0-9]+\.[0-9]+\.[0-9]+)$/.match(n)
+        versions << OpenStruct.new({ tag: repo.tags[n], rev: m[1] }) if m
+      end
+      versions
     end
 
     def build_package_contents(repo, tr)
