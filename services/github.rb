@@ -8,6 +8,7 @@ module Services
       dn = path.basename('.git').to_s
       repo = Rugged::Repository.clone_at(url, dn, bare: true)
       br = repo.branches['master']
+
       packages = {}
       br.target.tree.each_tree do |tr|
         packages = packages.merge(tr[:name] => process_package(repo, tr))
@@ -20,7 +21,29 @@ module Services
       packages
     end
 
+    def event(name, o)
+      @events ||= {
+        'create' => method(:create),
+        'delete' => method(:delete),
+        'push'   => method(:push),
+      }
+      fn = @events.fetch(name, lambda { |_| puts "? unknown event #{name}" })
+      fn.call(o)
+    end
+
     private
+
+    def create(o)
+      puts '# create event'
+    end
+
+    def delete(o)
+      puts '# delete event'
+    end
+
+    def push(o)
+      puts '# push event'
+    end
 
     def process_package(repo, tr)
       interpret_contents(repo, build_package_contents(repo, tr))
