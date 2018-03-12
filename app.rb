@@ -21,7 +21,7 @@ translate = Services::Translate.new(documents, cassandra)
 
 post '/repositories' do
   o = JSON.parse(request.body.read)
-  res = github.process(o['url']) do |packages|
+  res = github.get(o['url']) do |packages|
     documents.store_packages(o['url'], packages)
   end
 
@@ -34,11 +34,12 @@ post '/events' do
     event = request.env['HTTP_X_GITHUB_EVENT']
     o = JSON.parse(body)
 
-    github.event(event, o) do |packages|
-      
+    res = github.event(event, o) do |packages|
+      url = o.fetch('repository', {}).fetch('clone_url')
+      documents.store_packages(url, packages)
     end
     
-    json(status: 'ok')
+    json((res || {}).merge(status: 'ok'))
   else
     status(403)
     json(status: 'failed', reason: 'incorrect signature')

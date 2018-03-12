@@ -3,49 +3,76 @@ require 'rugged'
 
 module Services
   class GitHub
-    def process(url)
-      path = Pathname.new(URI.parse(url).path)
-      dn = path.basename('.git').to_s
-      repo = Rugged::Repository.clone_at(url, dn, bare: true)
-
-      versions = find_versions_using_tags(repo)
-
-      versions.each do |ver|
-        packages = {}
-        ver.tag.target.tree.each_tree do |tr|
-          pkg = process_package(repo, tr).merge('package' => { 'name' => tr[:name], 'revision' => ver.rev })
-          packages = packages.merge(tr[:name] => pkg)
-        end
-
-        yield(packages)
-      end
-
-      FileUtils.rm_rf(dn)
-
-      { versions: versions.map(&:rev) }
+    def get(url, &bl)
+      pull_revisions(url, lambda do |repo|
+        find_versions_using_tags(repo)
+      end, &bl)
     end
 
-    def event(name, o)
+    def event(name, o, &bl)
       @events ||= {
         'create' => method(:create),
         'delete' => method(:delete),
         'push'   => method(:push),
       }
       fn = @events.fetch(name, lambda { |_| puts "? unknown event #{name}" })
-      fn.call(o)
+      fn.call(o, &bl)
     end
 
     private
 
-    def create(o)
+    def pull_revisions(url, versions_fn, &bl)
+      path = Pathname.new(URI.parse(url).path)
+      dn = path.basename('.git').to_s
+      repo = Rugged::Repository.clone_at(url, dn, bare: true)
+
+      versions = versions_fn.call(repo)
+
+      packages = {}
+      versions.each do |ver|
+        ver.tag.target.tree.each_tree do |tr|
+          pkg = process_package(repo, tr).merge('package' => { 'name' => tr[:name], 'revision' => ver.rev, 'url' => url })
+          packages = packages.merge(tr[:name] => pkg)
+          bl.call(packages)
+        end
+      end
+
+      FileUtils.rm_rf(dn)
+
+      { versions: versions.map(&:rev) }
+    end
+    
+    def create(o, &bl)
+      @create_types ||= {
+        'tag' => method(:create_tag),
+      }
+
       puts '# create event'
+      t = o.fetch('ref_type', nil)
+      if t
+        fn = @create_types.fetch(t, lambda { |_| puts "? create: unknown type (type=#{t}" })
+        fn.call(o, &bl)
+      else
+        puts '! create: type not specified in event'
+      end
     end
 
-    def delete(o)
+    def create_tag(o, &bl)
+      ref = o.fetch('ref', nil)
+      url = o.fetch('repository', {}).fetch('clone_url', nil)
+      if ref && url
+        puts "# created tag, pulling version (tag=#{ref}; url=#{url})"
+        pull_revisions(url, lambda do |repo|
+                         find_version_for_tag(repo, ref)
+                       end, &bl)
+      end
+    end
+
+    def delete(o, &bl)
       puts '# delete event'
     end
 
-    def push(o)
+    def push(o, &bl)
       puts '# push event'
     end
 
@@ -60,6 +87,12 @@ module Services
         versions << OpenStruct.new({ tag: repo.tags[n], rev: m[1] }) if m
       end
       versions
+    end
+
+    def find_version_for_tag(repo, ref)
+      tag = repo.tags[ref]
+      m = /^v([0-9]+\.[0-9]+\.[0-9]+)$/.match(ref)
+      (m && tag) ? [OpenStruct.new({ tag: tag, rev: m[1] })] : []
     end
 
     def build_package_contents(repo, tr)

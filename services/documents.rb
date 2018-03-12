@@ -27,7 +27,7 @@ module Services
 
       pkgs.each do |pkg_name, pkg|
         pkg_info = pkg.fetch('package', {})
-        store_package_version(pkg_name, pkg_info['revision']) do
+        store_package_version(pkg_name, pkg_info) do
           rule_ids = store_thing(origin_url, pkg_name, pkg, 'rules') do |content|
             parse(content)
           end
@@ -55,15 +55,15 @@ module Services
       bl.call(doc) if bl && doc
     end
 
-    def store_package_version(name, revision)
+    def store_package_version(name, pkg_info)
       doc = @cl['packages'].find({ name: name }).first
       contents = yield
       if !doc
-        puts "# creating new package (name=#{name}; version=#{revision})"
-        @cl['packages'].insert_one({ name: name, revisions: [{ version: revision, contents: contents }] })
-      elsif doc && !doc['revisions'].find { |rev| rev['version'] == revision }
-        puts "# updating package (name=#{name}; version=#{revision})"
-        @cl['packages'].update_one({ '_id' => doc['_id'] }, '$push' => { 'revisions' => { version: revision, contents: contents } })
+        puts "# creating new package (name=#{name}; version=#{pkg_info['revision']}; url=#{pkg_info['url']})"
+        @cl['packages'].insert_one({ name: name, url: pkg_info['url'], revisions: [{ version: pkg_info['revision'], contents: contents }] })
+      elsif doc && !doc['revisions'].find { |rev| rev['version'] == pkg_info['revision'] }
+        puts "# updating package (name=#{name}; version=#{pkg_info['revision']})"
+        @cl['packages'].update_one({ '_id' => doc['_id'] }, '$push' => { 'revisions' => { version: pkg_info['revision'], contents: contents } })
       else
         puts "? package version already exists, nothing to do (name=#{name}; version=#{revision})"
       end
