@@ -26,12 +26,46 @@ module Services
       ids = { }
 
       pkgs.each do |pkg_name, pkg|
-        store_thing(origin_url, pkg_name, pkg, 'rules') do |content|
-          parse(content)
+        pkg_info = pkg.fetch('package', {})
+        store_package_version(pkg_name, pkg_info) do
+          rule_ids = store_thing(origin_url, pkg_name, pkg, 'rules') do |content|
+            parse(content)
+          end
+          table_ids = store_thing(origin_url, pkg_name, pkg, 'tables') do |content|
+            { table: CSV.parse(content) }
+          end
+
+          { rules: rule_ids, tables: table_ids }
         end
-        store_thing(origin_url, pkg_name, pkg, 'tables') do |content|
-          { table: CSV.parse(content) }
+      end
+    end
+
+    def remove_revision(url, revision)
+      doc = @cl['packages'].find(url: url).first
+      if doc
+        # [0] => the version we're removing
+        # [1] => everyone else
+        revisions = doc['revisions'].partition { |rev| rev['version'] == revision }
+
+        # collect all the ids which will remain into Set for faster matching
+        ids = revisions[1].inject({ 'rules' => Set.new, 'tables' => Set.new }) do |o, rev|
+          o.merge(rev['contents'].inject({}) do |cho, (k, v)|
+                    cho.merge(k => o[k].merge(v))
+                  end)
         end
+
+        # collect all the dangling ids in the revision we're removing and delete them at once
+        revisions[0].first['contents'].inject({}) do |o, (k, v)|
+          o.merge(k => v.select { |id| !ids[k].include?(id) })
+        end.each do |k, ids|
+          puts "# removing matching objects (k=#{k}; ids=#{ids})"
+          @cl[k].delete_many('public_id' => { '$in' => ids })
+        end
+
+        @cl['packages'].update_one({ '_id' => doc['_id'] }, '$pull' => { 'revisions' => { version: revision } })
+        
+      else
+        puts "? documents: failed to locate document to revise (url=#{url})"
       end
     end
 
@@ -49,20 +83,37 @@ module Services
       doc = @cl[cn].find(public_id: id).first
       bl.call(doc) if bl && doc
     end
+
+    def store_package_version(name, pkg_info)
+      doc = @cl['packages'].find({ name: name }).first
+      contents = yield
+      if !doc
+        puts "# creating new package (name=#{name}; version=#{pkg_info['revision']}; url=#{pkg_info['url']})"
+        @cl['packages'].insert_one({ name: name, url: pkg_info['url'], revisions: [{ version: pkg_info['revision'], contents: contents }] })
+      elsif doc && !doc['revisions'].find { |rev| rev['version'] == pkg_info['revision'] }
+        puts "# updating package (name=#{name}; version=#{pkg_info['revision']})"
+        @cl['packages'].update_one({ '_id' => doc['_id'] }, '$push' => { 'revisions' => { version: pkg_info['revision'], contents: contents } })
+      else
+        puts "? package version already exists, nothing to do (name=#{name}; version=#{revision})"
+      end
+    end
     
-    def store_thing(origin_url, pkg_name, pkg, pkg_section)
+    def store_thing(origin_url, pkg_name, pkg, pkg_section, &bl)
       @things ||= {
-        'rules'  => { 'type' => 'rule', 'prefix' => 'R', 'collection' => 'rules' },
-        'tables' => { 'type' => 'table', 'prefix' => 'T', 'collection' => 'tables' },
+        'rules'   => { 'type' => 'rule',    'prefix' => 'R', 'collection' => 'rules' },
+        'tables'  => { 'type' => 'table',   'prefix' => 'T', 'collection' => 'tables' },
       }
-      pkg.fetch(pkg_section, {}).each do |thing_name, thing|
+      ids = pkg.fetch(pkg_section, {}).map do |thing_name, thing|
         id = build_id(@things[pkg_section]['prefix'], pkg_name, thing_name, thing['version'])
         if !exists?(id)
           store_document('meta', id, thing.merge(name: thing_name, package: pkg_name, origin_url: origin_url, type: @things[pkg_section]['type']))
-          store_document(@things[pkg_section]['collection'], id, yield(thing.fetch('content', '')))
+          content = thing.fetch('content', '')
+          store_document(@things[pkg_section]['collection'], id, bl ? bl.call(content) : content)
         else
           p "# exists (id=#{id})"
         end
+        
+        id
       end
     end
 
