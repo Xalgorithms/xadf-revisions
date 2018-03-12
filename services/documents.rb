@@ -40,6 +40,35 @@ module Services
       end
     end
 
+    def remove_revision(url, revision)
+      doc = @cl['packages'].find(url: url).first
+      if doc
+        # [0] => the version we're removing
+        # [1] => everyone else
+        revisions = doc['revisions'].partition { |rev| rev['version'] == revision }
+
+        # collect all the ids which will remain into Set for faster matching
+        ids = revisions[1].inject({ 'rules' => Set.new, 'tables' => Set.new }) do |o, rev|
+          o.merge(rev['contents'].inject({}) do |cho, (k, v)|
+                    cho.merge(k => o[k].merge(v))
+                  end)
+        end
+
+        # collect all the dangling ids in the revision we're removing and delete them at once
+        revisions[0].first['contents'].inject({}) do |o, (k, v)|
+          o.merge(k => v.select { |id| !ids[k].include?(id) })
+        end.each do |k, ids|
+          puts "# removing matching objects (k=#{k}; ids=#{ids})"
+          @cl[k].delete_many('public_id' => { '$in' => ids })
+        end
+
+        @cl['packages'].update_one({ '_id' => doc['_id'] }, '$pull' => { 'revisions' => { version: revision } })
+        
+      else
+        puts "? documents: failed to locate document to revise (url=#{url})"
+      end
+    end
+
     def find_meta(id, &bl)
       find_one('meta', id, &bl)
     end

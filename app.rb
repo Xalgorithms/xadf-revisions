@@ -34,9 +34,13 @@ post '/events' do
     event = request.env['HTTP_X_GITHUB_EVENT']
     o = JSON.parse(body)
 
-    res = github.event(event, o) do |packages|
-      url = o.fetch('repository', {}).fetch('clone_url')
-      documents.store_packages(url, packages)
+    res = github.event(event, o) do |event|
+      case event[:action]
+      when :update
+        documents.store_packages(event[:url], event[:packages])
+      when :delete
+        documents.remove_revision(event[:url], event[:revision])
+      end
     end
     
     json((res || {}).merge(status: 'ok'))
