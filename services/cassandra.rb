@@ -4,10 +4,14 @@ require 'multi_json'
 module Services
   class Cassandra
     def initialize(opts)
-      cluster = ::Cassandra.cluster(
-        hosts: opts['hosts'],
-        port: opts['port'])
-      @session = cluster.connect(opts['keyspace'])
+      begin
+        cluster = ::Cassandra.cluster(
+          hosts: opts['hosts'],
+          port: opts['port'])
+        @session = cluster.connect(opts['keyspace'])
+      rescue ::Cassandra::Errors::NoHostsAvailable
+        puts '! no available Cassandra instance'
+      end
     end
 
     def store_effectives(os)
@@ -35,9 +39,13 @@ module Services
     end
     
     def within_batch
-      q = 'BEGIN BATCH ' + yield + ' APPLY BATCH;'
-      stm = @session.prepare(q)
-      @session.execute(stm)
+      if @session
+        q = 'BEGIN BATCH ' + yield + ' APPLY BATCH;'
+        stm = @session.prepare(q)
+        @session.execute(stm)
+      else
+        puts '! no session available'
+      end
     end
   end
 end
