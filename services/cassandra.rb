@@ -5,12 +5,20 @@ module Services
   class Cassandra
     def initialize(opts)
       begin
-        cluster = ::Cassandra.cluster(
-          hosts: opts['hosts'],
-          port: opts['port'])
+        puts "# discovering cluster (hosts=#{opts['hosts']})"
+        cluster = ::Cassandra.cluster(hosts: opts['hosts'])
+
+        puts "# connecting to keyspace (keyspace=#{opts['keyspace']})"
         @session = cluster.connect(opts['keyspace'])
-      rescue ::Cassandra::Errors::NoHostsAvailable
+      rescue ::Cassandra::Errors::NoHostsAvailable => e
         puts '! no available Cassandra instance'
+        p e
+      rescue ::Cassandra::Errors::IOError => e
+        puts '! failed to connect to cassandra'
+        p e
+      rescue ::Cassandra::Errors::InvalidError => e
+        puts '! failed to connect to cassandra'
+        p e
       end
     end
 
