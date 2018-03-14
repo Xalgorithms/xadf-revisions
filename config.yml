@@ -21,7 +21,7 @@ production:
     keyspace: xadf
 
   mongo:
-    url: 'mongodb://mongodb:27017/xadf'
-
+    url: 'mongodb://mongodb.marathon.l4lb.thisdcos.directory:27017'
+  
   git_branch: 'master'
   allowed_formats: [package, rule, table]
