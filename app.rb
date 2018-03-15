@@ -7,16 +7,14 @@ require_relative './services/documents'
 require_relative './services/github'
 require_relative './services/translate'
 
-config_file 'config.yml'
-
 # Used by Marathon healthcheck
 get "/status" do
   json(status: :live)
 end
 
 github = Services::GitHub.new
-cassandra = Services::Cassandra.new(settings.cassandra)
-documents = Services::Documents.new(settings.mongo)
+cassandra = Services::Cassandra.new()
+documents = Services::Documents.new()
 translate = Services::Translate.new(documents, cassandra)
 
 post '/repositories' do

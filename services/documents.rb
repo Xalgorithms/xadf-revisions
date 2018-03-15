@@ -5,12 +5,24 @@ require 'multi_json'
 require 'xa/rules/parse'
 require 'uuid'
 
+require_relative '../libs/local_env'
+
 module Services
   class Documents
     include XA::Rules::Parse
+
+    LOCAL_ENV = LocalEnv.new(
+      'MONGO', {
+        url: { type: :string, default: 'mongodb://127.0.0.1:27017/xadf' },
+      })
     
-    def initialize(opts)
-      @cl = Mongo::Client.new(opts['url'])
+    def initialize()
+      url = LOCAL_ENV.get(:url)
+      
+      puts "> connecting to Mongo (url=#{url})"
+      @cl = Mongo::Client.new(url)
+      puts "< connected"
+      
       @subscribers = {
         'meta'   => [],
         'rules'  => [],

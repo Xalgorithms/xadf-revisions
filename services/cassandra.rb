@@ -1,15 +1,26 @@
 require 'cassandra'
 require 'multi_json'
 
+require_relative '../libs/local_env'
+
 module Services
   class Cassandra
-    def initialize(opts)
+    LOCAL_ENV = LocalEnv.new(
+      'CASSANDRA', {
+        hosts:    { type: :list,   default: ['localhost'] },
+        keyspace: { type: :string, default: 'xadf' },
+      })
+    
+    def initialize()
       begin
-        puts "# discovering cluster (hosts=#{opts['hosts']})"
-        cluster = ::Cassandra.cluster(hosts: opts['hosts'])
+        hosts = LOCAL_ENV.get(:hosts)
+        keyspace = LOCAL_ENV.get(:keyspace)
+        
+        puts "# discovering cluster (hosts=#{hosts})"
+        cluster = ::Cassandra.cluster(hosts: hosts)
 
-        puts "# connecting to keyspace (keyspace=#{opts['keyspace']})"
-        @session = cluster.connect(opts['keyspace'])
+        puts "# connecting to keyspace (keyspace=#{keyspace})"
+        @session = cluster.connect(keyspace)
       rescue ::Cassandra::Errors::NoHostsAvailable => e
         puts '! no available Cassandra instance'
         p e
