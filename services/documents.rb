@@ -1,3 +1,4 @@
+require 'active_support/core_ext/hash'
 require 'csv'
 require 'digest'
 require 'mongo'
@@ -89,11 +90,71 @@ module Services
       find_one('rules', id, &bl)
     end
     
+    def all(cn)
+      @cl[cn].find({}).map { |o| { 'id' => o['public_id'] } }
+    end
+    
+    def one(cn, id)
+      doc = find_one(cn, id)
+      doc ? doc.except('_id', 'public_id').merge('id' => doc['public_id']) : nil
+    end
+
+    def remove(cn, id)
+      @removals ||= {
+        'rules' => lambda { |id| remove_content('rules', id) },
+        'tables' => lambda { |id| remove_content('tables', id) },
+        'packages' => lambda { |id| remove_package(id) },
+      }
+
+      fn = @removals.fetch(cn, nil)
+      fn.call(id)
+    end
+    
     private
 
+    def remove_content(cn, id)
+      packages = @cl['packages'].find(revisions: {
+                           '$elemMatch' => {
+                             'contents.rules' => { '$in' => ['94facf5dfd77b6a5ff1c23d40f35e26a2bd82038'] }
+                           }
+                           })
+      packages.each do |doc|
+        revisions = doc['revisions'].map do |rev|
+          rev.merge('contents' => rev['contents'].merge(cn => rev['contents'].fetch(cn, []) - [id]))
+        end
+        doc.merge('revisions' => revisions)
+        @cl['packages'].update_one({ '_id' => doc['_id'] }, { '$set' => { 'revisions' => revisions } })
+      end
+      
+      @cl[cn].delete_one(public_id: id)
+      @cl['meta'].delete_one(public_id: id)
+    end
+
+    def remove_package(id)
+      find_one('packages', id) do |doc|
+        ids = doc.fetch('revisions', []).inject({ 'rules' => Set.new, 'tables' => Set.new }) do |ids, rev|
+          contents = rev.fetch('contents', {})
+          ids.merge(
+            'rules' => ids['rules'] + contents.fetch('rules', []),
+            'tables' => ids['tables'] + contents.fetch('tables', []),
+          )
+        end
+
+        ids.each do |cn, ids|
+          ids.each do |id|
+            @cl[cn].delete_one(public_id: id)
+            @cl['meta'].delete_one(public_id: id)
+          end
+        end
+      end
+
+      @cl['packages'].delete_one('public_id' => id)
+    end
+    
     def find_one(cn, id, &bl)
       doc = @cl[cn].find(public_id: id).first
       bl.call(doc) if bl && doc
+      doc
     end
 
     def store_package_version(name, pkg_info)
@@ -101,7 +162,7 @@ module Services
       contents = yield
       if !doc
         puts "# creating new package (name=#{name}; version=#{pkg_info['revision']}; url=#{pkg_info['url']})"
-        @cl['packages'].insert_one({ name: name, url: pkg_info['url'], revisions: [{ version: pkg_info['revision'], contents: contents }] })
+        @cl['packages'].insert_one({ public_id: UUID.generate, name: name, url: pkg_info['url'], revisions: [{ version: pkg_info['revision'], contents: contents }] })
       elsif doc && !doc['revisions'].find { |rev| rev['version'] == pkg_info['revision'] }
         puts "# updating package (name=#{name}; version=#{pkg_info['revision']})"
         @cl['packages'].update_one({ '_id' => doc['_id'] }, '$push' => { 'revisions' => { version: pkg_info['revision'], contents: contents } })

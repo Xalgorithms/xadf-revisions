@@ -26,6 +26,22 @@ post '/repositories' do
   json(res.merge(status: 'ok'))
 end
 
+get '/rules' do
+  json(documents.all('rules'))
+end
+
+get '/rules/:id' do
+  json(documents.one('rules', params[:id]))
+end
+
+get '/tables' do
+  json(documents.all('tables'))
+end
+
+get '/packages' do
+  json(documents.all('packages'))
+end
+
 post '/events' do
   body = request.body.read
   if verify(body, request.env['HTTP_X_HUB_SIGNATURE'])
