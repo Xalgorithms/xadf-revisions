@@ -26,20 +26,14 @@ post '/repositories' do
   json(res.merge(status: 'ok'))
 end
 
-get '/rules' do
-  json(documents.all('rules'))
-end
-
-get '/rules/:id' do
-  json(documents.one('rules', params[:id]))
-end
-
-get '/tables' do
-  json(documents.all('tables'))
-end
-
-get '/packages' do
-  json(documents.all('packages'))
+['rules', 'tables', 'packages'].each do |n|
+  get "/#{n}" do
+    json(documents.all(n))
+  end
+  
+  get "/#{n}/:id" do
+  json(documents.one(n, params[:id]))
+  end
 end
 
 post '/events' do
