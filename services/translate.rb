@@ -53,22 +53,24 @@ module Services
 
     def translate_whens(id)
       @documents.find_rule(id) do |doc|
-        whens = doc['whens'].fetch('envelope', []).map do |wh|
-          expr = wh['expr']
-          # NOTE: for now, the parser guarantees us that the left is
-          # the reference and the right is the value to
-          # match... Assuming this is very fragile thinking that
-          # should eventually be changed
-          {
-            section: expr['left']['section'],
-            key:     expr['left']['key'],
-            op:      expr['op'],
-            val:     expr['right']['value'],
-            rule_id: id
-          }
-        end
+        if doc.key?('whens')
+          whens = doc['whens'].fetch('envelope', []).map do |wh|
+            expr = wh['expr']
+            # NOTE: for now, the parser guarantees us that the left is
+            # the reference and the right is the value to
+            # match... Assuming this is very fragile thinking that
+            # should eventually be changed
+            {
+              section: expr['left']['section'],
+              key:     expr['left']['key'],
+              op:      expr['op'],
+              val:     expr['right']['value'],
+              rule_id: id
+            }
+          end
 
-        @cassandra.store_whens(whens)
+          @cassandra.store_whens(whens)
+        end
       end
     end
   end

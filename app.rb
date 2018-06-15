@@ -59,6 +59,16 @@ end
   end
 end
 
+post '/rules' do
+  body = request.body.read
+  json({ id: documents.store_unpackaged_rule(body) })
+end
+
+post '/tables' do
+  body = request.body.read
+  json({ id: documents.store_unpackaged_table(body) })
+end
+
 post '/events' do
   body = request.body.read
   if verify(body, request.env['HTTP_X_HUB_SIGNATURE'])
