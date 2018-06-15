@@ -57,6 +57,19 @@ module Services
     def subscribe(name, fn)
       @subscribers[name] << fn
     end
+
+    def store_unpackaged_rule(content)
+      id = UUID.generate
+      store_document('rules', id, parse(content))
+      id
+    end
+
+    def store_unpackaged_table(content)
+      id = UUID.generate
+      p content
+      store_document('tables', id, { table: MultiJson.decode(content) })
+      id
+    end
     
     def store_packages(origin_url, pkgs)
       ids = { }
