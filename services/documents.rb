@@ -47,6 +47,11 @@ module Services
       @cl = Mongo::Client.new(url)
       puts "< connected"
       
+      @things = {
+        'rules'   => { 'type' => 'rule',    'prefix' => 'R', 'collection' => 'rules' },
+        'tables'  => { 'type' => 'table',   'prefix' => 'T', 'collection' => 'tables' },
+      }
+      
       @subscribers = {
         'meta'   => [],
         'rules'  => [],
@@ -58,16 +63,23 @@ module Services
       @subscribers[name] << fn
     end
 
-    def store_unpackaged_rule(content)
+    def store_unpackaged_rule(o)
       id = UUID.generate
-      store_document('rules', id, parse(content))
+      store_document('rules', id, parse(o['content']))
+      meta_id = build_id(
+        @things['rules']['prefix'],
+        o['meta']['package'], o['meta']['name'], o['meta']['version'])
+      store_document('meta', meta_id, o['meta'].merge('type' => 'rule'))
       id
     end
 
-    def store_unpackaged_table(content)
+    def store_unpackaged_table(o)
       id = UUID.generate
-      p content
-      store_document('tables', id, { table: MultiJson.decode(content) })
+      store_document('tables', id, { table: MultiJson.decode(o['content']) })
+      meta_id = build_id(
+        @things['tables']['prefix'],
+        o['meta']['package'], o['meta']['name'], o['meta']['version'])
+      store_document('meta', meta_id, o['meta'].merge('type' => 'table'))
       id
     end
     
@@ -208,10 +220,6 @@ module Services
     end
     
     def store_thing(origin_url, pkg_name, pkg, pkg_section, &bl)
-      @things ||= {
-        'rules'   => { 'type' => 'rule',    'prefix' => 'R', 'collection' => 'rules' },
-        'tables'  => { 'type' => 'table',   'prefix' => 'T', 'collection' => 'tables' },
-      }
       ids = pkg.fetch(pkg_section, {}).map do |thing_name, thing|
         id = build_id(@things[pkg_section]['prefix'], pkg_name, thing_name, thing['version'])
         if !exists?(id)
@@ -231,6 +239,7 @@ module Services
     end
     
     def store_document(cn, id, doc)
+      p [:store_document, cn, id, doc]
       @cl[cn].insert_one(doc.merge(public_id: id))
       fns = @subscribers.fetch(cn, [])
       fns.each { |fn| fn.call(id) }
