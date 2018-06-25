@@ -77,14 +77,17 @@ module Services
         avail_ks = ks.select { |k| o.key?(k) && o[k] }
         vals = avail_ks.map { |k| "'#{o[k]}'" }
         "INSERT INTO #{tn} (#{avail_ks.join(',')}) VALUES (#{vals.join(',')})"
-      end.join('; ') + ';'
+      end
     end
     
     def within_batch
       if @session
-        q = 'BEGIN BATCH ' + yield + ' APPLY BATCH;'
-        stm = @session.prepare(q)
-        @session.execute(stm)
+        stms = yield
+        if !stms.empty?
+          q = 'BEGIN BATCH ' + stms.join(';') + '; APPLY BATCH;'
+          stm = @session.prepare(q)
+          @session.execute(stm)
+        end
       else
         puts '! no session available'
       end

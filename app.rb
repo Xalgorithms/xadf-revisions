@@ -60,13 +60,14 @@ end
 end
 
 post '/rules' do
-  body = request.body.read
-  json({ id: documents.store_unpackaged_rule(body) })
+  o = JSON.parse(request.body.read)
+  
+  json({ id: documents.store_unpackaged_rule(o) })
 end
 
 post '/tables' do
-  body = request.body.read
-  json({ id: documents.store_unpackaged_table(body) })
+  o = JSON.parse(request.body.read)
+  json({ id: documents.store_unpackaged_table(o) })
 end
 
 post '/events' do
