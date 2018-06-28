@@ -64,22 +64,20 @@ module Services
     end
 
     def store_unpackaged_rule(o)
-      id = UUID.generate
-      store_document('rules', id, parse(o['content']))
-      meta_id = build_id(
+      id = build_id(
         @things['rules']['prefix'],
         o['meta']['package'], o['meta']['name'], o['meta']['version'])
-      store_document('meta', meta_id, o['meta'].merge('type' => 'rule'))
+      store_document('rules', id, parse(o['content']))
+      store_document('meta', id, o['meta'].merge('type' => 'rule'))
       id
     end
 
     def store_unpackaged_table(o)
-      id = UUID.generate
-      store_document('tables', id, { table: MultiJson.decode(o['content']) })
-      meta_id = build_id(
+      id = build_id(
         @things['tables']['prefix'],
         o['meta']['package'], o['meta']['name'], o['meta']['version'])
-      store_document('meta', meta_id, o['meta'].merge('type' => 'table'))
+      store_document('tables', id, { table: MultiJson.decode(o['content']) })
+      store_document('meta', id, o['meta'].merge('type' => 'table'))
       id
     end
     
