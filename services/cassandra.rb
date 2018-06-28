@@ -34,28 +34,6 @@ module Services
         keyspace: { type: :string, default: 'xadf' },
       })
     
-    def initialize()
-      begin
-        hosts = LOCAL_ENV.get(:hosts)
-        keyspace = LOCAL_ENV.get(:keyspace)
-        
-        puts "# discovering cluster (hosts=#{hosts})"
-        cluster = ::Cassandra.cluster(hosts: hosts)
-
-        puts "# connecting to keyspace (keyspace=#{keyspace})"
-        @session = cluster.connect(keyspace)
-      rescue ::Cassandra::Errors::NoHostsAvailable => e
-        puts '! no available Cassandra instance'
-        p e
-      rescue ::Cassandra::Errors::IOError => e
-        puts '! failed to connect to cassandra'
-        p e
-      rescue ::Cassandra::Errors::InvalidError => e
-        puts '! failed to connect to cassandra'
-        p e
-      end
-    end
-
     def store_effectives(os)
       keys = [:country, :region, :timezone, :starts, :ends, :party, :rule_id]
       within_batch do
@@ -72,6 +50,35 @@ module Services
 
     private
 
+    def session
+      @session ||= connect
+    end
+
+    def connect
+      begin
+        hosts = LOCAL_ENV.get(:hosts)
+        keyspace = LOCAL_ENV.get(:keyspace)
+        
+        puts "# discovering cluster (hosts=#{hosts})"
+        cluster = ::Cassandra.cluster(hosts: hosts)
+
+        puts "# connecting to keyspace (keyspace=#{keyspace})"
+        cluster.connect(keyspace)
+      rescue ::Cassandra::Errors::NoHostsAvailable => e
+        puts '! no available Cassandra instance'
+        p e
+        nil
+      rescue ::Cassandra::Errors::IOError => e
+        puts '! failed to connect to cassandra'
+        p e
+        nil
+      rescue ::Cassandra::Errors::InvalidError => e
+        puts '! failed to connect to cassandra'
+        p e
+        nil
+      end
+    end
+    
     def build_inserts(tn, ks, os)
       os.map do |o|
         avail_ks = ks.select { |k| o.key?(k) && o[k] }
@@ -81,12 +88,12 @@ module Services
     end
     
     def within_batch
-      if @session
+      if session
         stms = yield
         if !stms.empty?
           q = 'BEGIN BATCH ' + stms.join(';') + '; APPLY BATCH;'
-          stm = @session.prepare(q)
-          @session.execute(stm)
+          stm = session.prepare(q)
+          session.execute(stm)
         end
       else
         puts '! no session available'
