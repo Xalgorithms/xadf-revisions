@@ -1,8 +1,9 @@
 GIT
   remote: https://github.com/Xalgorithms/xa-rules.git
-  revision: 3c467632a928a652d37860aaae7f9d137c0a66ae
+  revision: 3f48e61feb82a012359be211a0d873cadace0e27
+  tag: v0.3.0
   specs:
-    xa-rules (0.2.2)
+    xa-rules (0.3.0)
       parslet
 
 GEM
