@@ -30,6 +30,8 @@ require_relative './services/documents'
 require_relative './services/github'
 require_relative './services/translate'
 
+require_relative './services/actions'
+
 # Used by Marathon healthcheck
 get "/status" do
   json(status: :live)
@@ -40,59 +42,67 @@ cassandra = Services::Cassandra.new()
 documents = Services::Documents.new()
 translate = Services::Translate.new(documents, cassandra)
 
-post '/repositories' do
-  o = JSON.parse(request.body.read)
-  res = github.get(o['url']) do |packages|
-    documents.store_packages(o['url'], packages)
-  end
+actions = Services::Actions.new()
 
-  json(res.merge(status: 'ok'))
+post '/actions' do
+  o = JSON.parse(request.body.read)
+  actions.execute(o)
+  json(status: 'ok')
 end
 
-['rules', 'tables', 'packages'].each do |n|
-  get "/#{n}" do
-    json(documents.all(n))
-  end
+# post '/repositories' do
+#   o = JSON.parse(request.body.read)
+#   res = github.get(o['url']) do |packages|
+#     documents.store_packages(o['url'], packages)
+#   end
+
+#   json(res.merge(status: 'ok'))
+# end
+
+# ['rules', 'tables', 'packages'].each do |n|
+#   get "/#{n}" do
+#     json(documents.all(n))
+#   end
   
-  get "/#{n}/:id" do
-  json(documents.one(n, params[:id]))
-  end
-end
+#   get "/#{n}/:id" do
+#   json(documents.one(n, params[:id]))
+#   end
+# end
 
-post '/rules' do
-  o = JSON.parse(request.body.read)
+# post '/rules' do
+#   o = JSON.parse(request.body.read)
   
-  json({ id: documents.store_unpackaged_rule(o) })
-end
+#   json({ id: documents.store_unpackaged_rule(o) })
+# end
 
-post '/tables' do
-  o = JSON.parse(request.body.read)
-  json({ id: documents.store_unpackaged_table(o) })
-end
+# post '/tables' do
+#   o = JSON.parse(request.body.read)
+#   json({ id: documents.store_unpackaged_table(o) })
+# end
 
-post '/events' do
-  body = request.body.read
-  if verify(body, request.env['HTTP_X_HUB_SIGNATURE'])
-    event = request.env['HTTP_X_GITHUB_EVENT']
-    o = JSON.parse(body)
+# post '/events' do
+#   body = request.body.read
+#   if verify(body, request.env['HTTP_X_HUB_SIGNATURE'])
+#     event = request.env['HTTP_X_GITHUB_EVENT']
+#     o = JSON.parse(body)
 
-    res = github.event(event, o) do |event|
-      case event[:action]
-      when :update
-        documents.store_packages(event[:url], event[:packages])
-      when :delete
-        documents.remove_revision(event[:url], event[:revision])
-      end
-    end
+#     res = github.event(event, o) do |event|
+#       case event[:action]
+#       when :update
+#         documents.store_packages(event[:url], event[:packages])
+#       when :delete
+#         documents.remove_revision(event[:url], event[:revision])
+#       end
+#     end
     
-    json((res || {}).merge(status: 'ok'))
-  else
-    status(403)
-    json(status: 'failed', reason: 'incorrect signature')
-  end
-end
+#     json((res || {}).merge(status: 'ok'))
+#   else
+#     status(403)
+#     json(status: 'failed', reason: 'incorrect signature')
+#   end
+# end
 
-def verify(body, request_sig)
-  sig = "sha1=#{OpenSSL::HMAC.hexdigest(OpenSSL::Digest.new('sha1'), ENV['GITHUB_SECRET'], body)}"
-  Rack::Utils.secure_compare(sig, request_sig)
-end
+# def verify(body, request_sig)
+#   sig = "sha1=#{OpenSSL::HMAC.hexdigest(OpenSSL::Digest.new('sha1'), ENV['GITHUB_SECRET'], body)}"
+#   Rack::Utils.secure_compare(sig, request_sig)
+# end
