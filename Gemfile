@@ -37,7 +37,7 @@ gem 'rugged'
 gem 'uuid'
 gem 'cassandra-driver'
 
-gem 'xa-rules', git: 'https://github.com/Xalgorithms/xa-rules.git', tag: 'v0.3.0'
+gem 'xa-rules', git: 'https://github.com/Xalgorithms/xa-rules.git', tag: 'v0.4.0'
 
 group :development do
   gem 'rerun'
