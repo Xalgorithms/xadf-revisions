@@ -20,6 +20,7 @@ GEM
       ione (~> 1.2)
     coderay (1.1.2)
     concurrent-ruby (1.0.5)
+    connection_pool (2.2.2)
     ffi (1.9.25)
     i18n (1.0.1)
       concurrent-ruby (~> 1.0)
@@ -47,10 +48,15 @@ GEM
     rb-fsevent (0.10.3)
     rb-inotify (0.9.10)
       ffi (>= 0.5.0, < 2)
+    redis (4.0.2)
     rerun (0.13.0)
       listen (~> 3.0)
     ruby_dep (1.5.0)
     rugged (0.27.1)
+    sidekiq (5.2.1)
+      connection_pool (~> 2.2, >= 2.2.2)
+      rack-protection (>= 1.5.0)
+      redis (>= 3.3.5, < 5)
     sinatra (2.0.3)
       mustermann (~> 1.0)
       rack (~> 2.0)
@@ -82,8 +88,10 @@ DEPENDENCIES
   multi_json
   pry
   puma
+  redis
   rerun
   rugged
+  sidekiq
   sinatra (~> 2.0.1)
   sinatra-contrib (~> 2.0.1)
   uuid
