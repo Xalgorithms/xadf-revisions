@@ -18,6 +18,8 @@ module Jobs
       else
         puts "? no url provided"
       end
+
+      false
     end
   end
 end
