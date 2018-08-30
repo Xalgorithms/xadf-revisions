@@ -35,15 +35,15 @@ class Documents
       })
   end
 
-  def store_rule(src, doc)
-    store_thing('rule', src, doc)
+  def store_rule(t, src, doc)
+    public_id = make_id(t, src.merge('version' => doc.fetch('meta', {}).fetch('version', nil)))
+    connection['rules'].insert_one(src.merge(content: doc, public_id: public_id, thing: t))
+    puts "# stored (thing=#{t}; public_id=#{public_id})"
+
+    public_id
   end
 
-  def store_table(src, doc)
-    store_thing('table', src, doc)
-  end
-
-  def store_data(data)
+  def store_table_data(data)
     connection['table_data'].insert_one(data)
   end
   
@@ -69,10 +69,5 @@ class Documents
   end
   
   def store_thing(t, src, doc)
-    public_id = make_id(t, src.merge('version' => doc.fetch('meta', {}).fetch('version', nil)))
-    connection[t.pluralize].insert_one(src.merge(content: doc, public_id: public_id))
-    puts "# stored (thing=#{t}; public_id=#{public_id})"
-
-    public_id
   end
 end

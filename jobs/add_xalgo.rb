@@ -38,7 +38,7 @@ module Jobs
     def perform(o)
       parsed = send("parse_#{@doc_type}", o['data'])
 
-      public_id = Storage.instance.docs.send("store_#{@doc_type}", o.slice('ns', 'name', 'origin'), parsed)
+      public_id = Storage.instance.docs.store_rule(@doc_type, o.slice('ns', 'name', 'origin'), parsed)
       store_meta(o, parsed, public_id)
       store_effectives(o, parsed, public_id)
 

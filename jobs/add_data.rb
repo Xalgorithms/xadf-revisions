@@ -38,7 +38,7 @@ module Jobs
         puts "! failed to parse table data (o=#{o})"
       end
 
-      Storage.instance.docs.store_data(o.merge('data' => pdata)) if pdata
+      Storage.instance.docs.store_table_data(o.merge('data' => pdata)) if pdata
 
       false
     end
