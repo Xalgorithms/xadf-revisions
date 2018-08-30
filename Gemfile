@@ -38,8 +38,16 @@ gem 'uuid'
 gem 'cassandra-driver'
 
 gem 'xa-rules', git: 'https://github.com/Xalgorithms/xa-rules.git', tag: 'v0.4.0'
+gem 'radish',   git: 'https://github.com/karfai/radish.git',        tag: 'v0.1.0'
 
 group :development do
   gem 'rerun'
   gem 'pry'
+end
+
+group :test do
+  gem 'faker'
+  gem 'fuubar'
+  gem 'rack-test'
+  gem 'rspec'
 end

@@ -5,7 +5,7 @@ rvm:
 services:
 - docker
 script:
-- "./build_images.sh"
+- "bundle exec rspec && ./build_images.sh"
 notifications:
   slack:
     rooms:
