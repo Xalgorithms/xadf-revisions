@@ -35,9 +35,8 @@ module Jobs
       if url
         puts "> fetching (url=#{url})"
         res = $github.get(url) do |packages|
-          p packages
+          
         end
-        p res
       else
         puts "? no url provided"
       end
