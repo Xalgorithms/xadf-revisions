@@ -99,7 +99,6 @@ class Tables
     if session
       q = yield
       if !q.empty?
-        p q
         stm = session.prepare(q)
         session.execute(stm)
       else
