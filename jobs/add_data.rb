@@ -21,14 +21,25 @@
 # You should have received a copy of the GNU Affero General Public
 # License along with this program. If not, see
 # <http://www.gnu.org/licenses/>.
+require 'multi_json'
 require 'sidekiq'
+
+require_relative './storage'
 
 module Jobs
   class AddData
     include Sidekiq::Worker
 
     def perform(o)
-      p [:add_data, o]
+      pdata = nil
+      begin
+        pdata = MultiJson.decode(o['data'])
+      rescue MultiJson::ParseError => err
+        puts "! failed to parse table data (o=#{o})"
+      end
+
+      Storage.instance.docs.store_data(o.merge('data' => pdata)) if pdata
+
       false
     end
   end

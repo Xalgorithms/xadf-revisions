@@ -42,6 +42,10 @@ class Documents
   def store_table(src, doc)
     store_thing('table', src, doc)
   end
+
+  def store_data(data)
+    connection['table_data'].insert_one(data)
+  end
   
   private
 
