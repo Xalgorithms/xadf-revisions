@@ -25,22 +25,12 @@ require 'sinatra'
 require 'sinatra/json'
 require 'sinatra/config_file'
 
-require_relative './services/cassandra'
-require_relative './services/documents'
-require_relative './services/github'
-require_relative './services/translate'
-
 require_relative './services/actions'
 
 # Used by Marathon healthcheck
 get "/status" do
   json(status: :live)
 end
-
-github = Services::GitHub.new
-cassandra = Services::Cassandra.new()
-documents = Services::Documents.new()
-translate = Services::Translate.new(documents, cassandra)
 
 actions = Services::Actions.new()
 
