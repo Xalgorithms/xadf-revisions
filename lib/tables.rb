@@ -38,14 +38,14 @@ class Tables
     within_batch do
       build_inserts('when_keys', [:section, :key], apps) + 
         build_inserts('whens',  [:section, :key, :op, :val, :rule_id], apps)
-    end
+    end if apps.any?
   end
   
   def store_effectives(effs)
     keys = [:country, :region, :timezone, :starts, :ends, :key, :rule_id]
     within_batch do
       build_inserts('effective', keys, effs)
-    end
+    end if effs.any?
   end
 
   def store_meta(meta)
