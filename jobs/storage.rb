@@ -21,31 +21,21 @@
 # You should have received a copy of the GNU Affero General Public
 # License along with this program. If not, see
 # <http://www.gnu.org/licenses/>.
-require_relative './add_xalgo'
+require 'singleton'
+
+require_relative '../lib/documents'
+require_relative '../lib/tables'
 
 module Jobs
-  class AddRule < AddXalgo
-    def initialize
-      super('rule')
-    end
+  class Storage
+    include Singleton
+
+    attr_reader :docs
+    attr_reader :tables
     
-    def perform_additional(o, parsed, public_id)
-      # NOTE: for now, the parser guarantees us that the left is
-      # the reference and the right is the value to
-      # match... Assuming this is very fragile thinking that
-      # should eventually be changed
-      applicables = parsed.fetch('whens', {}).inject([]) do |arr, (section, whens)|
-        arr + whens.map do |wh|
-          {
-            section: section,
-            key:     wh['expr']['left']['key'],
-            op:      wh['expr']['op'],
-            val:     wh['expr']['right']['value'],
-            rule_id: public_id
-          }
-        end
-      end
-      Storage.instance.tables.store_applicables(applicables)
+    def initialize
+      @docs = Documents.new
+      @tables = Tables.new
     end
   end
 end

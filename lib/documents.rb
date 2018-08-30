@@ -36,9 +36,11 @@ class Documents
   end
 
   def store_rule(src, doc)
-    store_thing('rule', src.merge(content: doc)) do
-      src.merge('version' => doc.fetch('meta', {}).fetch('version', nil))
-    end
+    store_thing('rule', src, doc)
+  end
+
+  def store_table(src, doc)
+    store_thing('table', src, doc)
   end
   
   private
@@ -62,9 +64,9 @@ class Documents
     Digest::SHA1.hexdigest("#{prefix}(#{args['ns']}:#{args['name']}:#{args['version']})")
   end
   
-  def store_thing(t, doc, &bl)
-    public_id = make_id(t, bl.call)
-    connection[t.pluralize].insert_one(doc.merge(public_id: public_id))
+  def store_thing(t, src, doc)
+    public_id = make_id(t, src.merge('version' => doc.fetch('meta', {}).fetch('version', nil)))
+    connection[t.pluralize].insert_one(src.merge(content: doc, public_id: public_id))
     puts "# stored (thing=#{t}; public_id=#{public_id})"
 
     public_id
