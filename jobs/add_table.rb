@@ -23,13 +23,14 @@
 # <http://www.gnu.org/licenses/>.
 require 'sidekiq'
 
+require_relative './add_xalgo'
+
 module Jobs
-  class AddTable
+  class AddTable < AddXalgo
     include Sidekiq::Worker
 
-    def perform(o)
-      p [:add_table, o]
-      false
+    def initialize
+      super('table')
     end
   end
 end

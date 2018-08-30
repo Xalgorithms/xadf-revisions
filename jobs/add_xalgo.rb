@@ -36,7 +36,7 @@ module Jobs
     end
     
     def perform(o)
-      parsed = parse_rule(o['data'])
+      parsed = send("parse_#{@doc_type}", o['data'])
 
       public_id = Storage.instance.docs.send("store_#{@doc_type}", o.slice('ns', 'name', 'origin'), parsed)
       store_meta(o, parsed, public_id)
@@ -45,6 +45,9 @@ module Jobs
       perform_additional(o, parsed, public_id)
 
       false
+    end
+    
+    def perform_additional(o, parsed, public_id)
     end
     
     def store_meta(o, parsed, public_id)
