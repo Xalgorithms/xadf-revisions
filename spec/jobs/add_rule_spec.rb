@@ -81,7 +81,8 @@ describe Jobs::AddRule do
       end
 
 
-      job.perform(ex[:args].with_indifferent_access.merge('data' => ex[:data]))
+      rv = job.perform(args)
+      expect(rv).to eql(false)
     end
   end
 end
