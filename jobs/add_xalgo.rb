@@ -66,12 +66,12 @@ module Jobs
     def store_effectives(o, parsed, public_id)
       effectives = parsed.fetch('effective', []).inject([]) do |eff_a, eff|
         eff_a + eff.fetch('jurisdictions', ['*']).inject([]) do |juri_a, juri|
-          (country, region) = juri.split('-')
+          (country, *region_parts) = juri.split('-')
           juri_a + eff.fetch('keys', ['*']).map do |k|
             {
               rule_id:  public_id,
               country:  country,
-              region:   region,
+              region:   region_parts.join('-'),
               key:      k,
               timezone: eff['timezone'],
               starts:   eff['starts'],

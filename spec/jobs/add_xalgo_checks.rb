@@ -33,6 +33,14 @@ module Specs
       include Radish::Randomness
   
       def build_expects
+        # these country codes have discovered bugs in the code that
+        # this will test
+        interesting_countries = ['NO', 'SG']
+
+        countries = ISO3166::Country.all.sample(Faker::Number.between(1, 10)).select do |c|
+          c.subdivisions.any?
+        end + interesting_countries.map { |alpha2| ISO3166::Country[alpha2] }
+        
         rand_array do
           {
             public_id: SecureRandom.hex,
@@ -42,8 +50,7 @@ module Specs
               origin: Faker::Internet.url,
               branch: ['master', 'production'].sample,
             },
-            effectives: rand_array(5) do
-              c = ISO3166::Country.all.sample(10).select { |c| c.subdivisions.any? }.first
+            effectives: countries.map do |c|
               {
                 country: c.alpha2,
                 timezone: TZInfo::Timezone.all_identifiers.sample,

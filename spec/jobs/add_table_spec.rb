@@ -21,33 +21,26 @@
 # You should have received a copy of the GNU Affero General Public
 # License along with this program. If not, see
 # <http://www.gnu.org/licenses/>.
-require 'active_support/core_ext/hash'
-require 'active_support/core_ext/integer/time'
-require 'countries'
-require 'faker'
-require 'tzinfo'
-
-require_relative '../../jobs/add_xalgo'
+require_relative '../../jobs/add_table'
 require_relative '../../jobs/storage'
 require_relative './add_xalgo_checks'
 
-describe Jobs::AddXalgo do
-  include Radish::Randomness
+describe Jobs::AddTable do
   include Specs::Jobs::AddXalgoChecks
+  include Radish::Randomness
   
   it "should store the document, meta and effective" do
     expects = build_expects
-
+    
     expects.each do |ex|
-      doc_type = ['rule', 'table'].sample
       args = build_args_from_expectation(ex)
       parsed = build_parsed_from_expectation(ex)
 
-      job = Jobs::AddXalgo.new(doc_type)
-      
-      expect(job).to receive("parse_#{doc_type}").with(ex[:data]).and_return(parsed)
+      job = Jobs::AddTable.new
+
+      expect(job).to receive("parse_table").with(ex[:data]).and_return(parsed)
       expect(Jobs::Storage.instance.docs).to receive(:store_rule).with(
-                                               doc_type,
+                                               'table',
                                                {
                                                  'ns' => ex[:args][:ns],
                                                  'name' => ex[:args][:name],
@@ -58,7 +51,6 @@ describe Jobs::AddXalgo do
       expect(Jobs::Storage.instance.tables).to receive(:store_meta).with(build_expected_meta(ex))
 
       expect(Jobs::Storage.instance.tables).to receive(:store_effectives).with(build_expected_effectives(ex))
-      expect(job).to receive(:perform_additional).with(build_args_from_expectation(ex), parsed, ex[:public_id])
 
       job.perform(ex[:args].with_indifferent_access.merge('data' => ex[:data]))
     end
