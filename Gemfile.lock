@@ -29,6 +29,10 @@ GEM
     coderay (1.1.2)
     concurrent-ruby (1.0.5)
     connection_pool (2.2.2)
+    countries (1.2.5)
+      currencies (~> 0.4.2)
+      i18n_data (~> 0.7.0)
+    currencies (0.4.2)
     diff-lcs (1.3)
     faker (1.9.1)
       i18n (>= 0.7)
@@ -38,13 +42,12 @@ GEM
       ruby-progressbar (~> 1.4)
     i18n (1.1.0)
       concurrent-ruby (~> 1.0)
+    i18n_data (0.7.0)
     ione (1.2.4)
     listen (3.1.5)
       rb-fsevent (~> 0.9, >= 0.9.4)
       rb-inotify (~> 0.9, >= 0.9.7)
       ruby_dep (~> 1.2)
-    macaddr (1.7.1)
-      systemu (~> 2.6.2)
     method_source (0.9.0)
     minitest (5.11.3)
     mongo (2.6.2)
@@ -100,13 +103,12 @@ GEM
       rack-protection (= 2.0.3)
       sinatra (= 2.0.3)
       tilt (>= 1.3, < 3)
-    systemu (2.6.5)
     thread_safe (0.3.6)
     tilt (2.0.8)
     tzinfo (1.2.5)
       thread_safe (~> 0.1)
-    uuid (2.3.9)
-      macaddr (~> 1.0)
+    tzinfo-data (1.2018.5)
+      tzinfo (>= 1.0.0)
 
 PLATFORMS
   ruby
@@ -114,6 +116,7 @@ PLATFORMS
 DEPENDENCIES
   activesupport
   cassandra-driver
+  countries
   faker
   fuubar
   mongo
@@ -129,7 +132,7 @@ DEPENDENCIES
   sidekiq
   sinatra (~> 2.0.1)
   sinatra-contrib (~> 2.0.1)
-  uuid
+  tzinfo-data
   xa-rules!
 
 RUBY VERSION

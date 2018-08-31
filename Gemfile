@@ -26,16 +26,17 @@ source 'https://rubygems.org'
 ruby '2.4.2'
 
 gem 'activesupport'
+gem 'cassandra-driver'
+gem 'countries'
 gem 'mongo'
 gem 'multi_json'
 gem 'puma'
 gem 'redis'
+gem 'rugged'
 gem 'sidekiq'
 gem 'sinatra', "~> 2.0.1"
 gem 'sinatra-contrib', "~> 2.0.1"
-gem 'rugged'
-gem 'uuid'
-gem 'cassandra-driver'
+gem 'tzinfo-data'
 
 gem 'xa-rules', git: 'https://github.com/Xalgorithms/xa-rules.git', tag: 'v0.4.0'
 gem 'radish',   git: 'https://github.com/karfai/radish.git',        tag: 'v0.1.0'
