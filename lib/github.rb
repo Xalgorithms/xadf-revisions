@@ -24,17 +24,9 @@
 require 'multi_json'
 require 'rugged'
 
-require_relative '../jobs/add_rule'
-require_relative '../jobs/add_table'
-require_relative '../jobs/add_data'
-
 class GitHub
   def get(url)
-    @jobs ||= {
-      '.rule'  => Jobs::AddRule,
-      '.table' => Jobs::AddTable,
-      '.json'  => Jobs::AddData,
-    }
+    puts "> fetching (url=#{url})"
     
     path = Pathname.new(URI.parse(url).path)
     dn = path.basename('.git').to_s

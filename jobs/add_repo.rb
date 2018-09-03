@@ -22,20 +22,33 @@
 # License along with this program. If not, see
 # <http://www.gnu.org/licenses/>.
 require 'sidekiq'
-require_relative '../services/github'
 
-$github = Services::GitHub.new
+require_relative '../lib/github'
+require_relative './add_rule'
+require_relative './add_table'
+require_relative './add_data'
 
 module Jobs
   class AddRepo
     include Sidekiq::Worker
 
     def perform(o)
+      @github ||= GitHub.new
+      @jobs ||= {
+        'rule'  => Jobs::AddRule,
+        'table' => Jobs::AddTable,
+        'json'  => Jobs::AddData,
+      }
+
       url = o.fetch('url', nil)
       if url
-        puts "> fetching (url=#{url})"
-        res = $github.get(url) do |packages|
-          
+        @github.get(url).each do |o|
+          job_kl = @jobs.fetch(o[:type], nil)
+          if job_kl
+            job_kl.perform_async(o)
+          else
+            puts "! no job class found (type=#{o[:type]})"
+          end
         end
       else
         puts "? no url provided"
