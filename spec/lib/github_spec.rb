@@ -163,6 +163,8 @@ describe GitHub do
         end
       end
     end
+
+    expect(FileUtils).to receive(:rm_rf).with(repo[:path])
     
     gh = GitHub.new
     ac = gh.get(repo[:url])

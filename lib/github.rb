@@ -34,24 +34,12 @@ class GitHub
     rv = ['master', 'production'].inject([]) do |contents_a, n|
       br = repo.branches[n]
       if br
-        nses = []
-        begin
-          o = br.target.tree.path('namespaces.txt')
-          nses = repo.read(o[:oid]).data.split("\n")
-          puts "# namespaces.txt found (n=#{n})"
-        rescue Rugged::TreeError => e
-          puts "# namespaces.txt not found (n=#{n})"
-          br.target.tree.each_tree do |tr|
-            nses << tr[:name]
-          end
-        end
-        
+        nses = get_namespaces(repo, br, n)
         contents_a + nses.inject([]) do |ns_a, ns|
           ref = br.target.tree.path(ns)
           tr = repo.lookup(ref[:oid])
           ns_a + tr.map do |f_ref|
             path = Pathname.new(f_ref[:name])
-            ext = path.extname
             {
               ns: ns,
               name: path.basename(path.extname).to_s,
@@ -83,7 +71,23 @@ class GitHub
   #   fn.call(o, &bl)
   # end
 
-  # private
+  private
+
+  def get_namespaces(repo, br, br_name)
+    begin
+      o = br.target.tree.path('namespaces.txt')
+      puts "# namespaces.txt found (n=#{br_name})"
+      repo.read(o[:oid]).data.split("\n")
+    rescue Rugged::TreeError => e
+      puts "# namespaces.txt not found (n=#{br_name})"
+      nses = []
+      br.target.tree.each_tree do |tr|
+        nses << tr[:name]
+      end
+      
+      nses
+    end    
+  end
 
   # def create(o, &bl)
   #   @create_types ||= {
