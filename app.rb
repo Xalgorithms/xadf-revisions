@@ -32,11 +32,9 @@ get "/status" do
   json(status: :live)
 end
 
-actions = Services::Actions.new()
-
 post '/actions' do
   o = JSON.parse(request.body.read)
-  actions.execute(o)
+  Services::Actions.instance.execute(o)
   json(status: 'ok')
 end
 

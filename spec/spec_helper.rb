@@ -40,6 +40,19 @@
 #
 # See http://rubydoc.info/gems/rspec-core/RSpec/Core/Configuration
 require 'radish/randomness'
+require 'rack/test'
+
+ENV['RACK_ENV'] = 'test'
+
+require_relative '../app'
+
+module RSpecApp
+  include Rack::Test::Methods
+
+  def app()
+    Sinatra::Application
+  end
+end
 
 RSpec.configure do |config|
   # rspec-expectations config goes here. You can use an alternate
@@ -118,4 +131,6 @@ RSpec.configure do |config|
   # as the one that triggered the failure.
   Kernel.srand config.seed
 =end
+
+  config.include(RSpecApp)
 end
