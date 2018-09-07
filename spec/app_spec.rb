@@ -80,4 +80,57 @@ describe 'Application' do
     expect(last_response).to be_ok
     expect(last_response_json).to eql('status' => 'ok')        
   end
+
+  it 'should not accept POST of /events when the event is not push' do
+    payload = rand_document
+    payload_s = MultiJson.encode(payload)
+    secret = '1234'
+    sig = "sha1=#{OpenSSL::HMAC.hexdigest(OpenSSL::Digest.new('sha1'), secret, payload_s)}"
+
+    ex = {
+      name: 'update',
+      thing: 'repository',
+      args: payload,
+    }
+    
+    actions = double('Fake: actions')
+    expect(Services::Actions).to_not receive(:instance)
+    expect(actions).to_not receive(:execute)
+
+    ENV['GITHUB_SECRET'] = secret
+    rand_array_of_words.each do |event|
+      post('/events', payload_s, 'HTTP_X_HUB_SIGNATURE' => sig, 'HTTP_X_GITHUB_EVENT' => event)
+
+      expect(last_response).to_not be_ok
+      expect(last_response.status).to eql(403)
+    end
+  end
+
+  it 'should not accept POST of /events when the signature is invalid or missing' do
+    payload = rand_document
+    payload_s = MultiJson.encode(payload)
+    secret = '1234'
+    sig = ''
+
+    ex = {
+      name: 'update',
+      thing: 'repository',
+      args: payload,
+    }
+    
+    actions = double('Fake: actions')
+    expect(Services::Actions).to_not receive(:instance)
+    expect(actions).to_not receive(:execute)
+
+    ENV['GITHUB_SECRET'] = secret
+    post('/events', payload_s, 'HTTP_X_HUB_SIGNATURE' => sig)
+
+    expect(last_response).to_not be_ok
+    expect(last_response.status).to eql(403)
+    
+    post('/events', payload_s)
+    
+    expect(last_response).to_not be_ok
+    expect(last_response.status).to eql(403)
+  end
 end

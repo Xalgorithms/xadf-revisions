@@ -27,6 +27,10 @@ require 'sinatra/config_file'
 
 require_relative './services/actions'
 
+if ENV['RACK_ENV'] == 'test'
+  disable(:show_exceptions)
+end
+
 # Used by Marathon healthcheck
 get "/status" do
   json(status: :live)
@@ -73,15 +77,24 @@ post '/events' do
   # we really just need to handle the "push" event - it tells us what we need to know about create/delete.
   # create: { "before"=>"0000000000000000000000000000000000000000", "after"=>"444351339beb58b82a82a946286c3ebe0d2e6460", "created"=>true, "deleted"=>false }
   # delete: { "before"=>"444351339beb58b82a82a946286c3ebe0d2e6460", "after"=>"0000000000000000000000000000000000000000", "created"=>false, "deleted"=>true }
-  # 
-  if verify(body, request.env['HTTP_X_HUB_SIGNATURE']) && request.env['HTTP_X_GITHUB_EVENT'] == 'push'
-    o = JSON.parse(body)
-    Services::Actions.instance.execute(name: 'update', thing: 'repository', args: o)
-    json(status: 'ok')
-  else
+  #
+
+  if !request.env.key?('HTTP_X_HUB_SIGNATURE') || !verify(body, request.env['HTTP_X_HUB_SIGNATURE'])
     status(403)
-    json(status: 'failed', reason: 'incorrect signature')
+    json(status: 'failed_signature', reason: 'incorrect signature')
+    halt
   end
+
+  event = request.env['HTTP_X_GITHUB_EVENT']
+  if event != 'push'
+    status(403)
+    json(status: 'failed_unknown_event', reason: "event is not handled (event=#{event})")
+    halt
+  end
+  
+  o = JSON.parse(body)
+  Services::Actions.instance.execute(name: 'update', thing: 'repository', args: o)
+  json(status: 'ok')
 end
 
 def verify(body, request_sig)
