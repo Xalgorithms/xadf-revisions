@@ -27,6 +27,7 @@ require_relative '../lib/github'
 require_relative './add_rule'
 require_relative './add_table'
 require_relative './add_data'
+require_relative './storage'
 
 module Jobs
   class AddRepo
@@ -42,7 +43,9 @@ module Jobs
 
       url = o.fetch('url', nil)
       if url
-        @github.get(url).each do |o|
+        items = @github.get(url)
+        Jobs::Storage.instance.tables.store_repository(clone_url: url)
+        items.each do |o|
           job_kl = @jobs.fetch(o[:type], nil)
           if job_kl
             job_kl.perform_async(o)

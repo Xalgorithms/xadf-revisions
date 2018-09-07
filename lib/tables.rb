@@ -48,15 +48,24 @@ class Tables
     end if effs.any?
   end
 
-  def store_meta(meta)
+  def store_meta(o)
     keys = [:ns, :name, :origin, :branch, :rule_id, :version, :runtime, :criticality]
-    execute do
-      "#{build_insert('rules', keys, meta)};"
-    end
+    insert_one('rules', keys, o)
+  end
+  
+  def store_repository(o)
+    keys = [:clone_url]
+    insert_one('repositories', keys, o)
   end
   
   private
 
+  def insert_one(tbl, keys, o)
+    execute do
+      "#{build_insert(tbl, keys, o)};"
+    end
+  end
+  
   def build_insert(tn, ks, o)
     keyspace = @env.get(:keyspace)
     avail_ks = ks.select { |k| o.key?(k) && o[k] }

@@ -27,6 +27,7 @@ require_relative '../../jobs/add_repo'
 require_relative '../../jobs/add_rule'
 require_relative '../../jobs/add_table'
 require_relative '../../jobs/add_data'
+require_relative '../../jobs/storage'
 require_relative '../../lib/github'
 
 describe Jobs::AddRepo do
@@ -52,6 +53,8 @@ describe Jobs::AddRepo do
 
     expect(GitHub).to receive(:new).and_return(github)
     expect(github).to receive(:get).with(url).and_return(contents)
+
+    expect(Jobs::Storage.instance.tables).to receive(:store_repository).once.with(clone_url: url)
 
     requests = { }
 

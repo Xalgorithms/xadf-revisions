@@ -105,6 +105,17 @@ describe Tables do
   def build_expectation_from_doc(tbl, doc)
     { tbl: tbl, keys: doc.keys.map(&:to_s).sort, vals: doc.values.sort }
   end
+
+  it 'should store repositories' do
+    keys = [:clone_url]
+
+    rand_document_collection(keys).each do |o|
+      tables = Tables.new
+      validate = build_insert_validation(tables)
+      tables.store_repository(o)
+      check_first_insert(validate, build_expectation_from_doc('repositories', o))
+    end
+  end
   
   it 'should store meta data' do
     keys = [:ns, :name, :origin, :branch, :rule_id, :version, :runtime, :criticality]
