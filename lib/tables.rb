@@ -57,6 +57,10 @@ class Tables
     keys = [:clone_url]
     insert_one('repositories', keys, o)
   end
+
+  def if_has_repository(clone_url, &bl)
+    query_if_any('repositories', clone_url: { type: :string, value: clone_url }, &bl).join
+  end
   
   private
 
@@ -65,12 +69,38 @@ class Tables
       "#{build_insert(tbl, keys, o)};"
     end
   end
+
+  def query_if_any(tbl, where, &bl)
+    query_async(tbl, nil, where) do |rs|
+      bl.call if bl && rs.any?
+    end
+  end
   
   def build_insert(tn, ks, o)
     keyspace = @env.get(:keyspace)
     avail_ks = ks.select { |k| o.key?(k) && o[k] }
     vals = avail_ks.map { |k| "'#{o[k]}'" }
     avail_ks.empty? ? '' : "INSERT INTO #{keyspace}.#{tn} (#{avail_ks.join(',')}) VALUES (#{vals.join(',')})"
+  end
+
+  def make_value(v)
+    case v[:type]
+    when :string
+      "'#{v[:value]}'"
+    else
+      v[:value]
+    end
+  end
+  
+  def build_select(tbl, keys=nil, where=nil)
+    keyspace = @env.get(:keyspace)
+    cols = (keys && keys.any?) ? keys.join(',') : '*'
+    where_conds = where.map do |k, v|
+      "#{k}=#{make_value(v)}"
+    end.join(' AND ')
+    
+    where = where_conds.empty? ? '' : "WHERE #{where_conds}"
+    "SELECT #{cols} FROM #{keyspace}.#{tbl} #{where};"
   end
   
   def build_inserts(tn, ks, os)
@@ -115,6 +145,17 @@ class Tables
       end
     else
       puts '! no session available'
+    end
+  end
+
+  def query_async(tbl, keys=nil, where=nil, &bl)
+    if session
+      q = build_select(tbl, keys, where)
+      fut = session.execute_async(q)
+      fut.on_success do |rs|
+        bl.call(rs) if bl
+      end
+      fut
     end
   end
 

@@ -69,6 +69,29 @@ describe Tables do
       end
     end
   end
+
+
+  class QueryValidation
+    attr_reader :queries
+    
+    def initialize
+      @queries = []
+    end
+    
+    def capture(q)
+      m = /SELECT (.+) FROM interlibr\.([a-z]+)(?: WHERE ([^\;]+))?/.match(q)
+      if m
+        @queries << {
+          tbl: m[2],
+          keys: m[1].split(',').sort,
+          conds: m[3].split(' AND ').map do |c|
+            (k, v) = c.split('=')
+            { key: k, value: v }
+          end
+        }
+      end
+    end
+  end
   
   def build_insert_validation(tables)
     validate = InsertValidation.new
@@ -81,6 +104,22 @@ describe Tables do
       stm
     end
     expect(session).to receive(:execute).with(stm)
+
+    validate
+  end
+
+  def build_query_validation(tables, results)
+    validate = QueryValidation.new
+    session = double('Fake: Cassandra session')
+    fut = double('Fake: future')
+    
+    expect(tables).to receive(:session).at_least(:once).and_return(session)
+    expect(session).to receive(:execute_async) do |q|
+      validate.capture(q)
+      fut
+    end
+    expect(fut).to receive(:on_success).and_yield(results)
+    expect(fut).to receive(:join)
 
     validate
   end
@@ -100,6 +139,16 @@ describe Tables do
     exes.each_with_index do |ex, i|
       check_one_insert(validate.queries[i], ex)
     end
+  end
+
+  def check_one_query(ac, ex)
+    expect(ac[:tbl]).to eql(ex[:tbl])
+    expect(ac[:keys]).to eql(ex[:keys])
+    expect(ac[:conds]).to eql(ex[:conds])
+  end
+  
+  def check_first_query(validate, ex)
+    check_one_query(validate.queries.first, ex)
   end
 
   def build_expectation_from_doc(tbl, doc)
@@ -162,5 +211,29 @@ describe Tables do
       end
       check_many_inserts(validate, exes)
     end
+  end
+
+  it 'should call back if a repository exists' do
+      tables = Tables.new
+      validate = build_query_validation(tables, [rand_document])
+      url = Faker::Internet.url
+
+      found = false
+      tables.if_has_repository(url) do
+        found = true
+      end
+
+      expect(found).to eql(true)
+      ex = {
+        tbl: 'repositories',
+        keys: ['*'],
+        conds: [
+          { key: 'clone_url', value: "'#{url}'" },
+        ],
+      }
+      check_first_query(validate, ex)
+  end
+
+  it 'should not call back if a repository does not exist' do
   end
 end
