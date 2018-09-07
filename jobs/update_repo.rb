@@ -21,37 +21,14 @@
 # You should have received a copy of the GNU Affero General Public
 # License along with this program. If not, see
 # <http://www.gnu.org/licenses/>.
-require_relative '../../services/actions'
-require_relative '../../jobs/add_repo'
-require_relative '../../jobs/update_repo'
+require 'sidekiq'
 
-describe Services::Actions do
-  include Radish::Randomness
-  
-  it 'should enqueue jobs' do
-    action_klasses = {
-      add: {
-        repository: Jobs::AddRepo,
-      },
-      update: {
-        repository: Jobs::UpdateRepo,
-      },
-    }
-    
-    actions = Services::Actions.instance
+module Jobs
+  class UpdateRepo
+    include Sidekiq::Worker
 
-    action_klasses.each do |action_name, things|
-      things.each do |thing_name, klass|
-        ex_args = rand_document
-        o = {
-          'name'  => action_name,
-          'thing' => thing_name,
-          'args'  => ex_args,
-        }
-
-        expect(klass).to receive(:perform_async).with(ex_args)
-        actions.execute(o)
-      end
+    def perform(o)
+      false
     end
   end
 end

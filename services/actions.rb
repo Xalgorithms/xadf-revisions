@@ -24,6 +24,7 @@
 require 'singleton'
 
 require_relative '../jobs/add_repo'
+require_relative '../jobs/update_repo'
 
 module Services
   class Actions
@@ -33,7 +34,10 @@ module Services
       @actions ||= {
         add: {
           repository: Jobs::AddRepo
-        }
+        },
+        update: {
+          repository: Jobs::UpdateRepo
+        },
       }
 
       n = o.fetch('name', nil).to_sym
