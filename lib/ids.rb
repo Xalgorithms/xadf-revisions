@@ -21,50 +21,11 @@
 # You should have received a copy of the GNU Affero General Public
 # License along with this program. If not, see
 # <http://www.gnu.org/licenses/>.
-require 'active_support/core_ext/string'
-require 'mongo'
+require 'digest'
 
-require_relative './ids'
-require_relative './local_env'
-
-class Documents
-  include Ids
-  
-  def initialize
-    @env = LocalEnv.new(
-      'MONGO', {
-        url: { type: :string, default: 'mongodb://127.0.0.1:27017/interlibr' },
-      })
-  end
-
-  def store_rule(t, src, doc)
-    public_id = make_id(t, src.merge('version' => doc.fetch('meta', {}).fetch('version', nil)))
-    connection['rules'].insert_one(src.merge(content: doc, public_id: public_id, thing: t))
-    puts "# stored (thing=#{t}; public_id=#{public_id})"
-
-    public_id
-  end
-
-  def store_table_data(data)
-    connection['table_data'].insert_one(data)
-  end
-  
-  private
-
-  def connection
-    @cl ||= connect
-  end
-
-  def connect
-    url = @env.get(:url)
-    
-    puts "> connecting to Mongo (url=#{url})"
-    cl = Mongo::Client.new(url)
-    puts "< connected"
-
-    cl
-  end
-
-  def store_thing(t, src, doc)
+module Ids
+  def make_id(t, args)
+    prefix = t.first.capitalize
+    Digest::SHA1.hexdigest("#{prefix}(#{args['ns']}:#{args['name']}:#{args['version']})")
   end
 end

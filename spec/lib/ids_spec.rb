@@ -21,50 +21,29 @@
 # You should have received a copy of the GNU Affero General Public
 # License along with this program. If not, see
 # <http://www.gnu.org/licenses/>.
-require 'active_support/core_ext/string'
-require 'mongo'
+require 'digest'
+require 'faker'
 
-require_relative './ids'
-require_relative './local_env'
+require_relative '../../lib/ids'
 
-class Documents
+describe Ids do
+  include Radish::Randomness
   include Ids
-  
-  def initialize
-    @env = LocalEnv.new(
-      'MONGO', {
-        url: { type: :string, default: 'mongodb://127.0.0.1:27017/interlibr' },
-      })
-  end
 
-  def store_rule(t, src, doc)
-    public_id = make_id(t, src.merge('version' => doc.fetch('meta', {}).fetch('version', nil)))
-    connection['rules'].insert_one(src.merge(content: doc, public_id: public_id, thing: t))
-    puts "# stored (thing=#{t}; public_id=#{public_id})"
+  it 'should generate an id based on ns, name, version' do
+    types = ['rule', 'table']
+    rand_array do
+      {
+        'type'    => types.sample,
+        'ns'      => "#{Faker::Lorem.word}",
+        'name'    => "#{Faker::Lorem.word}",
+        'version' => "#{Faker::App.semantic_version}",
+      }
+    end.each do |vals|
+      k = "#{vals['type'].first.capitalize}(#{vals['ns']}:#{vals['name']}:#{vals['version']})"
+      id = Digest::SHA1.hexdigest(k)
 
-    public_id
-  end
-
-  def store_table_data(data)
-    connection['table_data'].insert_one(data)
-  end
-  
-  private
-
-  def connection
-    @cl ||= connect
-  end
-
-  def connect
-    url = @env.get(:url)
-    
-    puts "> connecting to Mongo (url=#{url})"
-    cl = Mongo::Client.new(url)
-    puts "< connected"
-
-    cl
-  end
-
-  def store_thing(t, src, doc)
+      expect(make_id(vals['type'], vals.slice('ns', 'name', 'version'))).to eql(id)
+    end
   end
 end
