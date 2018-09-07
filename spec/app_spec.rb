@@ -57,4 +57,27 @@ describe 'Application' do
     expect(last_response).to be_ok
     expect(last_response_json).to eql('status' => 'ok')    
   end
+
+  it 'should accept POST of /events when the github event is push' do
+    payload = rand_document
+    payload_s = MultiJson.encode(payload)
+    secret = '1234'
+    sig = "sha1=#{OpenSSL::HMAC.hexdigest(OpenSSL::Digest.new('sha1'), secret, payload_s)}"
+
+    ex = {
+      name: 'update',
+      thing: 'repository',
+      args: payload,
+    }
+    
+    actions = double('Fake: actions')
+    expect(Services::Actions).to receive(:instance).and_return(actions)
+    expect(actions).to receive(:execute).with(ex)
+
+    ENV['GITHUB_SECRET'] = secret
+    post('/events', payload_s, 'HTTP_X_HUB_SIGNATURE' => sig, 'HTTP_X_GITHUB_EVENT' => 'push')
+
+    expect(last_response).to be_ok
+    expect(last_response_json).to eql('status' => 'ok')        
+  end
 end
