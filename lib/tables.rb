@@ -21,17 +21,24 @@
 # You should have received a copy of the GNU Affero General Public
 # License along with this program. If not, see
 # <http://www.gnu.org/licenses/>.
+require 'active_support/core_ext/hash'
+require 'active_support/core_ext/string'
 require 'cassandra'
 
+require_relative './ids'
 require_relative './local_env'
 
 class Tables
+  include Ids
+  
   def initialize
     @env = LocalEnv.new(
       'CASSANDRA', {
         hosts:    { type: :list,   default: ['localhost'] },
         keyspace: { type: :string, default: 'interlibr' },
       })
+    @any_fn = lambda { |rs| rs.any? }
+    @empty_fn = lambda { |rs| rs.empty? }
   end
 
   def store_applicables(apps)
@@ -59,17 +66,21 @@ class Tables
   end
 
   def if_has_repository(clone_url, &bl)
-    query_repo_presence(clone_url, lambda do |rs|
-      rs.any?
-    end, &bl).join
+    query_repo_presence(clone_url, @any_fn, &bl).join
   end
 
   def unless_has_repository(clone_url, &bl)
-    query_repo_presence(clone_url, lambda do |rs|
-      rs.empty?
-    end, &bl).join
+    query_repo_presence(clone_url, @empty_fn, &bl).join
   end
 
+  def if_has_rule(args, &bl)
+    query_rule_presence(args, @any_fn, &bl).join
+  end
+  
+  def unless_has_rule(args, &bl)
+    query_rule_presence(args, @empty_fn, &bl).join
+  end
+  
   private
 
   def insert_one(tbl, keys, o)
@@ -82,12 +93,24 @@ class Tables
     query_if(
       'repositories',
       fn,
-      clone_url: { type: :string, value: clone_url },
+      [:clone_url],
+      { clone_url: { type: :string, value: clone_url } },
       &bl)
   end
   
-  def query_if(tbl, fn, where, &bl)
-    query_async(tbl, nil, where) do |rs|
+  def query_rule_presence(args, fn, &bl)
+    qargs = args.with_indifferent_access
+    rule_id = make_id(qargs.fetch('type', 'rule'), qargs)
+    query_if(
+      'rules',
+      fn,
+      [:rule_id],
+      { rule_id: { type: :string, value: rule_id } },
+      &bl)
+  end
+  
+  def query_if(tbl, fn, keys=[], where={}, &bl)
+    query_async(tbl, keys, where) do |rs|
       bl.call if bl && fn.call(rs)
     end
   end

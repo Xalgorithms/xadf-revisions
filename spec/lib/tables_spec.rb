@@ -24,9 +24,11 @@
 require 'faker'
 
 require_relative '../../lib/tables'
+require_relative '../../lib/ids'
 
 describe Tables do
   include Radish::Randomness
+  include Ids
 
   def rand_document_collection(ks)
     rand_array do
@@ -101,12 +103,12 @@ describe Tables do
     fut = double('Fake: future')
     
     expect(tables).to receive(:session).at_least(:once).and_return(session)
-    expect(session).to receive(:execute_async) do |q|
+    expect(session).to receive(:execute_async).at_least(:once) do |q|
       validate.capture(q)
       fut
     end
-    expect(fut).to receive(:on_success).and_yield(results)
-    expect(fut).to receive(:join)
+    expect(fut).to receive(:on_success).at_least(:once).and_yield(results)
+    expect(fut).to receive(:join).at_least(:once)
 
     validate
   end
@@ -136,6 +138,13 @@ describe Tables do
   
   def check_first_query(validate, ex)
     check_one_query(validate.queries.first, ex)
+  end
+
+  def check_many_queries(validate, exes)
+    expect(validate.queries.size).to eql(exes.size)
+    exes.each_with_index do |ex, i|
+      check_one_query(validate.queries[i], ex)
+    end
   end
 
   def build_expectation_from_doc(tbl, doc)
@@ -201,44 +210,118 @@ describe Tables do
   end
 
   it 'should call back if a repository exists' do
-      tables = Tables.new
-      validate = build_query_validation(tables, [rand_document])
-      url = Faker::Internet.url
+    tables = Tables.new
+    validate = build_query_validation(tables, [rand_document])
+    url = Faker::Internet.url
 
-      found = false
-      tables.if_has_repository(url) do
-        found = true
-      end
+    found = false
+    tables.if_has_repository(url) do
+      found = true
+    end
 
-      expect(found).to eql(true)
-      ex = {
-        tbl: 'repositories',
-        keys: ['*'],
-        conds: [
-          { key: 'clone_url', value: "'#{url}'" },
-        ],
-      }
-      check_first_query(validate, ex)
+    expect(found).to eql(true)
+    ex = {
+      tbl: 'repositories',
+      keys: ['clone_url'],
+      conds: [
+        { key: 'clone_url', value: "'#{url}'" },
+      ],
+    }
+    check_first_query(validate, ex)
   end
 
   it 'should not call back if a repository does not exist' do
-      tables = Tables.new
-      validate = build_query_validation(tables, [])
-      url = Faker::Internet.url
+    tables = Tables.new
+    validate = build_query_validation(tables, [])
+    url = Faker::Internet.url
 
+    found = false
+    tables.unless_has_repository(url) do
+      found = true
+    end
+
+    expect(found).to eql(true)
+    ex = {
+      tbl: 'repositories',
+      keys: ['clone_url'],
+      conds: [
+        { key: 'clone_url', value: "'#{url}'" },
+      ],
+    }
+    check_first_query(validate, ex)
+  end
+
+  it 'should call back if a rule exists' do
+    tables = Tables.new
+    validate = build_query_validation(tables, [Faker::Number.hexadecimal(40).to_s])
+
+    types = ['rule', 'table']
+    exes = rand_array do
+      {
+        ns: Faker::Lorem.word,
+        name: Faker::Lorem.word,
+        version: Faker::App.semantic_version,
+        type: types.sample
+      }
+    end
+
+    exes.each do |ex|
       found = false
-      tables.unless_has_repository(url) do
+      tables.if_has_rule(ex.with_indifferent_access) do
         found = true
       end
 
       expect(found).to eql(true)
+    end
+
+    queries = exes.map do |ex|
+      id = make_id(ex[:type], ex.slice(:ns, :name, :version).with_indifferent_access)
       ex = {
-        tbl: 'repositories',
-        keys: ['*'],
+        tbl: 'rules',
+        keys: ['rule_id'],
         conds: [
-          { key: 'clone_url', value: "'#{url}'" },
+          { key: 'rule_id', value: "'#{id}'" },
         ],
       }
-      check_first_query(validate, ex)
+    end
+    
+    check_many_queries(validate, queries)
+  end
+
+  it 'should not call back if a rule does not exist' do
+    tables = Tables.new
+    validate = build_query_validation(tables, [])
+
+    types = ['rule', 'table']
+    exes = rand_array do
+      {
+        ns: Faker::Lorem.word,
+        name: Faker::Lorem.word,
+        version: Faker::App.semantic_version,
+        type: types.sample
+      }
+    end
+
+    exes.each do |ex|
+      found = false
+      tables.if_has_rule(ex.with_indifferent_access) do
+        found = true
+      end
+
+      expect(found).to eql(false)
+    end
+
+    queries = exes.map do |ex|
+      id = make_id(ex[:type], ex.slice(:ns, :name, :version).with_indifferent_access)
+      ex = {
+        tbl: 'rules',
+        keys: ['rule_id'],
+        conds: [
+          { key: 'rule_id', value: "'#{id}'" },
+        ],
+      }
+    end
+    
+    check_many_queries(validate, queries)
   end
 end
