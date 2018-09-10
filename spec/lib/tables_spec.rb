@@ -28,19 +28,6 @@ require_relative '../../lib/tables'
 describe Tables do
   include Radish::Randomness
 
-  RSpec::Matchers.define(:cassandra_insert) do |tbl, ks, vs|
-    match do |actual|
-      m = /INSERT INTO interlibr\.(.+) \((.+)\) VALUES \((.+)\)/.match(actual)
-      if m
-        matches_keys = ks.map(&:to_s).sort == m[2].split(',').sort
-        matches_vals = vs.sort == m[3].split(',').map { |s| s[1..-2] }.sort
-        tbl == m[1] && matches_keys && matches_vals
-      else
-        false
-      end
-    end
-  end
-
   def rand_document_collection(ks)
     rand_array do
       ks.inject({}) do |o, k|
@@ -235,5 +222,23 @@ describe Tables do
   end
 
   it 'should not call back if a repository does not exist' do
+      tables = Tables.new
+      validate = build_query_validation(tables, [])
+      url = Faker::Internet.url
+
+      found = false
+      tables.unless_has_repository(url) do
+        found = true
+      end
+
+      expect(found).to eql(true)
+      ex = {
+        tbl: 'repositories',
+        keys: ['*'],
+        conds: [
+          { key: 'clone_url', value: "'#{url}'" },
+        ],
+      }
+      check_first_query(validate, ex)
   end
 end

@@ -59,9 +59,17 @@ class Tables
   end
 
   def if_has_repository(clone_url, &bl)
-    query_if_any('repositories', clone_url: { type: :string, value: clone_url }, &bl).join
+    query_repo_presence(clone_url, lambda do |rs|
+      rs.any?
+    end, &bl).join
   end
-  
+
+  def unless_has_repository(clone_url, &bl)
+    query_repo_presence(clone_url, lambda do |rs|
+      rs.empty?
+    end, &bl).join
+  end
+
   private
 
   def insert_one(tbl, keys, o)
@@ -70,9 +78,17 @@ class Tables
     end
   end
 
-  def query_if_any(tbl, where, &bl)
+  def query_repo_presence(clone_url, fn, &bl)
+    query_if(
+      'repositories',
+      fn,
+      clone_url: { type: :string, value: clone_url },
+      &bl)
+  end
+  
+  def query_if(tbl, fn, where, &bl)
     query_async(tbl, nil, where) do |rs|
-      bl.call if bl && rs.any?
+      bl.call if bl && fn.call(rs)
     end
   end
   
