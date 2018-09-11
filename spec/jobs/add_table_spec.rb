@@ -21,12 +21,17 @@
 # You should have received a copy of the GNU Affero General Public
 # License along with this program. If not, see
 # <http://www.gnu.org/licenses/>.
+require 'radish/documents/core'
+
 require_relative '../../jobs/add_table'
 require_relative '../../jobs/storage'
+require_relative '../../lib/ids'
 require_relative './add_xalgo_checks'
 
 describe Jobs::AddTable do
+  include Ids
   include Specs::Jobs::AddXalgoChecks
+  include Radish::Documents::Core
   include Radish::Randomness
   
   it "should store the document, meta and effective" do
@@ -38,19 +43,22 @@ describe Jobs::AddTable do
 
       job = Jobs::AddTable.new
 
+      ver = get(parsed, 'meta.version')
+      meta = args.slice(:ns, :name, :origin).merge(version: ver)
+      public_id = make_id('table', meta)
+      
       expect(job).to receive("parse_table").with(ex[:data]).and_return(parsed)
       expect(Jobs::Storage.instance.docs).to receive(:store_rule).with(
-                                               'table',
-                                               {
-                                                 'ns' => ex[:args][:ns],
-                                                 'name' => ex[:args][:name],
-                                                 'origin' => ex[:args][:origin],
-                                               },
-                                               parsed).and_return(ex[:public_id])
+                                               'table', public_id, meta, parsed
+                                             )
       
-      expect(Jobs::Storage.instance.tables).to receive(:store_meta).with(build_expected_meta(ex))
+      expect(Jobs::Storage.instance.tables).to receive(:store_meta).with(
+                                                 build_expected_meta(public_id, ex)
+                                               )
 
-      expect(Jobs::Storage.instance.tables).to receive(:store_effectives).with(build_expected_effectives(ex))
+      expect(Jobs::Storage.instance.tables).to receive(:store_effectives).with(
+                                                 build_expected_effectives(public_id, ex)
+                                               )
 
       rv = job.perform(args)
       expect(rv).to eql(false)

@@ -24,12 +24,9 @@
 require 'active_support/core_ext/string'
 require 'mongo'
 
-require_relative './ids'
 require_relative './local_env'
 
 class Documents
-  include Ids
-  
   def initialize
     @env = LocalEnv.new(
       'MONGO', {
@@ -37,12 +34,9 @@ class Documents
       })
   end
 
-  def store_rule(t, src, doc)
-    public_id = make_id(t, src.merge('version' => doc.fetch('meta', {}).fetch('version', nil)))
-    connection['rules'].insert_one(src.merge(content: doc, public_id: public_id, thing: t))
-    puts "# stored (thing=#{t}; public_id=#{public_id})"
-
-    public_id
+  def store_rule(t, id, meta, doc)
+    #public_id = make_id(t, src.merge('version' => doc.fetch('meta', {}).fetch('version', nil)))
+    connection['rules'].insert_one(meta.merge(content: doc, public_id: id, thing: t))
   end
 
   def store_table_data(data)

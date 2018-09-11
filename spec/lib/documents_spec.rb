@@ -53,8 +53,7 @@ describe Documents do
 
       docs = Documents.new
       expect(docs).to receive(:connection).and_return(conn)
-      expect(docs).to receive(:make_id).and_return(o[:id])
-      expect(docs.store_rule(th, o[:src], o[:doc])).to eql(o[:id])
+      docs.store_rule(th, o[:id], o[:src], o[:doc])
     end
   end
 

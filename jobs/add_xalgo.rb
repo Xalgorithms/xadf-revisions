@@ -22,12 +22,16 @@
 # License along with this program. If not, see
 # <http://www.gnu.org/licenses/>.
 require 'sidekiq'
+require 'radish/documents/core'
 require 'xa/rules/parse/content'
 
 require_relative './storage'
+require_relative '../lib/ids'
 
 module Jobs
   class AddXalgo
+    include Ids
+    include Radish::Documents::Core
     include Sidekiq::Worker
     include XA::Rules::Parse::Content
 
@@ -37,8 +41,10 @@ module Jobs
     
     def perform(o)
       parsed = send("parse_#{@doc_type}", o['data'])
+      meta = o.slice('ns', 'name', 'origin').merge('version' => get(parsed, 'meta.version', nil))
+      public_id = make_id(@doc_type, meta)
 
-      public_id = Storage.instance.docs.store_rule(@doc_type, o.slice('ns', 'name', 'origin'), parsed)
+      Storage.instance.docs.store_rule(@doc_type, public_id, meta, parsed)
       store_meta(o, parsed, public_id)
       store_effectives(o, parsed, public_id)
 

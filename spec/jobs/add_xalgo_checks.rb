@@ -43,7 +43,6 @@ module Specs
         
         rand_array do
           {
-            public_id: SecureRandom.hex,
             args: {
               ns: Faker::Lorem.word,
               name: Faker::Lorem.word,
@@ -84,18 +83,18 @@ module Specs
         }
       end
 
-      def build_expected_effectives(ex)
+      def build_expected_effectives(rule_id, ex)
         ex_effs = ex[:effectives].inject([]) do |all_a, eff|
           all_a + eff[:regions].inject([]) do |reg_a, region|
             reg_a + eff[:keys].map do |k|
-              eff.except(:regions, :keys).merge(region: region, key: k, rule_id: ex[:public_id])
+              eff.except(:regions, :keys).merge(region: region, key: k, rule_id: rule_id)
             end
           end
         end
       end
 
-      def build_expected_meta(ex)
-        ex[:meta].merge(ex[:args]).merge(rule_id: ex[:public_id])
+      def build_expected_meta(rule_id, ex)
+        ex[:meta].merge(ex[:args]).merge(rule_id: rule_id)
       end
     end
   end
