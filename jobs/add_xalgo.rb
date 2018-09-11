@@ -72,7 +72,7 @@ module Jobs
       }
 
       {
-        public_id: make_id(@doc_type, meta),
+        public_id: make_id(@doc_type, meta.slice(:ns, :name, :version).with_indifferent_access),
         meta: meta,
         doc: parsed,
       }

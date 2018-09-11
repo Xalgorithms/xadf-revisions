@@ -43,8 +43,8 @@ describe Jobs::AddRule do
       parsed = build_parsed_from_expectation(ex)
 
       ver = get(parsed, 'meta.version')
-      public_id = make_id('rule', ex[:args])
       meta = build_expected_meta(ex)
+      public_id = make_id('rule', meta.slice(:ns, :name, :version).with_indifferent_access)
       
       whens = rand_array { Faker::Lorem.word }.inject([]) do |arr, section|
         arr + rand_array do

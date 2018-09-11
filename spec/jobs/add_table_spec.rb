@@ -45,7 +45,7 @@ describe Jobs::AddTable do
 
       ver = get(parsed, 'meta.version')
       meta = build_expected_meta(ex)
-      public_id = make_id('table', meta)
+      public_id = make_id('table', meta.slice(:ns, :name, :version).with_indifferent_access)
       
       expect(job).to receive("parse_table").with(ex[:data]).and_return(parsed)
       expect(Jobs::Storage.instance.docs).to receive(:store_rule).with(
