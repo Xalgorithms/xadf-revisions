@@ -261,7 +261,8 @@ describe Tables do
         ns: Faker::Lorem.word,
         name: Faker::Lorem.word,
         version: Faker::App.semantic_version,
-        type: types.sample
+        type: types.sample,
+        branch: Faker::Lorem.word,
       }
     end
 
@@ -281,6 +282,7 @@ describe Tables do
         keys: ['rule_id'],
         conds: [
           { key: 'rule_id', value: "'#{id}'" },
+          { key: 'branch', value: "'#{ex[:branch]}'" },
         ],
       }
     end
@@ -298,7 +300,8 @@ describe Tables do
         ns: Faker::Lorem.word,
         name: Faker::Lorem.word,
         version: Faker::App.semantic_version,
-        type: types.sample
+        type: types.sample,
+        branch: Faker::Lorem.word,
       }
     end
 
@@ -318,6 +321,7 @@ describe Tables do
         keys: ['rule_id'],
         conds: [
           { key: 'rule_id', value: "'#{id}'" },
+          { key: 'branch', value: "'#{ex[:branch]}'" },
         ],
       }
     end

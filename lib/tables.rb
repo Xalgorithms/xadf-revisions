@@ -101,11 +101,15 @@ class Tables
   def query_rule_presence(args, fn, &bl)
     qargs = args.with_indifferent_access
     rule_id = make_id(qargs.fetch('type', 'rule'), qargs)
+
     query_if(
       'rules',
       fn,
       [:rule_id],
-      { rule_id: { type: :string, value: rule_id } },
+      {
+        rule_id: { type: :string, value: rule_id },
+        branch: { type: :string, value: qargs.fetch('branch', 'master') },
+      },
       &bl)
   end
   
