@@ -43,8 +43,8 @@ describe Jobs::AddRule do
       parsed = build_parsed_from_expectation(ex)
 
       ver = get(parsed, 'meta.version')
-      meta = ex[:args].slice(:ns, :name, :origin).merge(version: ver).with_indifferent_access
-      public_id = make_id('rule', meta)
+      public_id = make_id('rule', ex[:args])
+      meta = build_expected_meta(ex)
       
       whens = rand_array { Faker::Lorem.word }.inject([]) do |arr, section|
         arr + rand_array do
@@ -78,7 +78,7 @@ describe Jobs::AddRule do
                                              )
       
       expect(Jobs::Storage.instance.tables).to receive(:store_meta).with(
-                                                 build_expected_meta(public_id, ex)
+                                                 meta.merge(rule_id: public_id)
                                                )
 
       expect(Jobs::Storage.instance.tables).to receive(:store_effectives).with(

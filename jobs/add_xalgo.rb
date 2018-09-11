@@ -21,8 +21,9 @@
 # You should have received a copy of the GNU Affero General Public
 # License along with this program. If not, see
 # <http://www.gnu.org/licenses/>.
-require 'sidekiq'
+require 'active_support/core_ext/hash'
 require 'radish/documents/core'
+require 'sidekiq'
 require 'xa/rules/parse/content'
 
 require_relative './storage'
@@ -40,42 +41,57 @@ module Jobs
     end
     
     def perform(o)
-      parsed = send("parse_#{@doc_type}", o['data'])
-      meta = o.slice('ns', 'name', 'origin').merge('version' => get(parsed, 'meta.version', nil))
-      public_id = make_id(@doc_type, meta)
+      @classified = parse_and_classify(o)
 
-      Storage.instance.docs.store_rule(@doc_type, public_id, meta, parsed)
-      store_meta(o, parsed, public_id)
-      store_effectives(o, parsed, public_id)
+      Storage.instance.docs.store_rule(
+        @doc_type,
+        @classified[:public_id],
+        @classified[:meta],
+        @classified[:doc],
+      )
+      store_meta
+      store_effectives
 
-      perform_additional(o, parsed, public_id)
+      perform_additional(@classified)
 
       false
     end
-    
-    def perform_additional(o, parsed, public_id)
+
+    private
+
+    def parse_and_classify(o)
+      parsed = send("parse_#{@doc_type}", o['data'])
+      meta = {
+        ns: o['ns'],
+        name: o['name'],
+        origin: o['origin'],
+        branch: o['branch'],
+        version: get(parsed, 'meta.version', nil),
+        runtime: get(parsed, 'meta.runtime', nil),
+        criticality: get(parsed, 'meta.criticality', 'normal'),
+      }
+
+      {
+        public_id: make_id(@doc_type, meta),
+        meta: meta,
+        doc: parsed,
+      }
     end
     
-    def store_meta(o, parsed, public_id)
-      Storage.instance.tables.store_meta(
-        ns:          o['ns'],
-        name:        o['name'],
-        origin:      o['origin'],
-        branch:      o['branch'],
-        rule_id:     public_id,
-        version:     parsed.fetch('meta', {}).fetch('version', nil),
-        runtime:     parsed.fetch('meta', {}).fetch('runtime', nil),
-        criticality: parsed.fetch('meta', {}).fetch('criticality', nil),
-      )
+    def perform_additional(classified)
+    end
+    
+    def store_meta
+      Storage.instance.tables.store_meta(@classified[:meta].merge(rule_id: @classified[:public_id]))
     end
 
-    def store_effectives(o, parsed, public_id)
-      effectives = parsed.fetch('effective', []).inject([]) do |eff_a, eff|
+    def store_effectives
+      effectives = @classified[:doc].fetch('effective', []).inject([]) do |eff_a, eff|
         eff_a + eff.fetch('jurisdictions', ['*']).inject([]) do |juri_a, juri|
           (country, *region_parts) = juri.split('-')
           juri_a + eff.fetch('keys', ['*']).map do |k|
             {
-              rule_id:  public_id,
+              rule_id:  @classified[:public_id],
               country:  country,
               region:   region_parts.join('-'),
               key:      k,

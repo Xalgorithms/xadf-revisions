@@ -77,10 +77,10 @@ module Specs
         {
           'effective' => ex[:effectives].map do |eff|
             juris = eff[:regions].map { |region| "#{eff[:country]}-#{region}" }
-            eff.except(:regions).merge(jurisdictions: juris).with_indifferent_access
+            eff.except(:regions).merge(jurisdictions: juris)
           end,
-          'meta' => ex[:meta].with_indifferent_access,
-        }
+          'meta' => ex[:meta],
+        }.with_indifferent_access
       end
 
       def build_expected_effectives(rule_id, ex)
@@ -93,8 +93,8 @@ module Specs
         end
       end
 
-      def build_expected_meta(rule_id, ex)
-        ex[:meta].merge(ex[:args]).merge(rule_id: rule_id)
+      def build_expected_meta(ex)
+        ex[:meta].merge(ex[:args])
       end
     end
   end

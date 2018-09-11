@@ -29,19 +29,19 @@ module Jobs
       super('rule')
     end
     
-    def perform_additional(o, parsed, public_id)
+    def perform_additional(o)
       # NOTE: for now, the parser guarantees us that the left is
       # the reference and the right is the value to
       # match... Assuming this is very fragile thinking that
       # should eventually be changed
-      applicables = parsed.fetch('whens', {}).inject([]) do |arr, (section, whens)|
+      applicables = o[:doc].fetch('whens', {}).inject([]) do |arr, (section, whens)|
         arr + whens.map do |wh|
           {
             section: section,
             key:     wh['expr']['left']['key'],
             op:      wh['expr']['op'],
             val:     wh['expr']['right']['value'],
-            rule_id: public_id
+            rule_id: o[:public_id],
           }
         end
       end

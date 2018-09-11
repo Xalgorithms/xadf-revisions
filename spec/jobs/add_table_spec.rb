@@ -44,16 +44,16 @@ describe Jobs::AddTable do
       job = Jobs::AddTable.new
 
       ver = get(parsed, 'meta.version')
-      meta = args.slice(:ns, :name, :origin).merge(version: ver)
+      meta = build_expected_meta(ex)
       public_id = make_id('table', meta)
       
       expect(job).to receive("parse_table").with(ex[:data]).and_return(parsed)
       expect(Jobs::Storage.instance.docs).to receive(:store_rule).with(
                                                'table', public_id, meta, parsed
                                              )
-      
+
       expect(Jobs::Storage.instance.tables).to receive(:store_meta).with(
-                                                 build_expected_meta(public_id, ex)
+                                                 meta.merge(rule_id: public_id)
                                                )
 
       expect(Jobs::Storage.instance.tables).to receive(:store_effectives).with(
