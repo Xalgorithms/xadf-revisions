@@ -32,7 +32,7 @@ module Specs
     module AddXalgoChecks
       include Radish::Randomness
   
-      def build_expects
+      def build_expects(props={})
         # these country codes have discovered bugs in the code that
         # this will test
         interesting_countries = ['NO', 'SG']
@@ -47,7 +47,7 @@ module Specs
               ns: Faker::Lorem.word,
               name: Faker::Lorem.word,
               origin: Faker::Internet.url,
-              branch: ['master', 'production'].sample,
+              branch: props.fetch(:branch, Faker::Lorem.word),
             },
             effectives: countries.map do |c|
               {

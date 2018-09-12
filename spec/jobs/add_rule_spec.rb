@@ -34,9 +34,9 @@ describe Jobs::AddRule do
   include Specs::Jobs::AddXalgoChecks
   include Radish::Documents::Core
   include Radish::Randomness
-  
-  it "should store the document, meta and effective" do
-    expects = build_expects
+
+  def verify_storage(props={})
+    expects = build_expects(props)
     
     expects.each do |ex|
       args = build_args_from_expectation(ex)
@@ -73,25 +73,55 @@ describe Jobs::AddRule do
       job = Jobs::AddRule.new
 
       expect(job).to receive("parse_rule").with(ex[:data]).and_return(parsed)
-      expect(Jobs::Storage.instance.docs).to receive(:store_rule).with(
-                                               'rule', public_id, meta, parsed
-                                             )
-      
-      expect(Jobs::Storage.instance.tables).to receive(:store_meta).with(
-                                                 meta.merge(rule_id: public_id)
-                                               )
 
-      expect(Jobs::Storage.instance.tables).to receive(:store_effectives).with(
-                                                 build_expected_effectives(public_id, ex)
+      has_should_store_rule = props.key?(:should_store_rule)
+      should_store_rule = props[:should_store_rule]
+      if has_should_store_rule
+        receive_unless_has_rule = receive(:unless_has_rule).with(public_id, props[:branch])
+        receive_unless_has_rule = receive_unless_has_rule.and_yield if should_store_rule
+        
+        expect(Jobs::Storage.instance.tables).to receive_unless_has_rule
+      end
+
+      if !has_should_store_rule || should_store_rule
+        expect(Jobs::Storage.instance.docs).to receive(:store_rule).with(
+                                                 'rule', public_id, meta, parsed
                                                )
-      expect(Jobs::Storage.instance.tables).to receive(:store_applicables) do |ac_apps|
-        expect(ac_apps.length).to eql(whens.length)
-        whens.each { |wh| expect(ac_apps).to include(wh) }
+        
+        expect(Jobs::Storage.instance.tables).to receive(:store_meta).with(
+                                                   meta.merge(rule_id: public_id)
+                                                 )
+
+        expect(Jobs::Storage.instance.tables).to receive(:store_effectives).with(
+                                                   build_expected_effectives(public_id, ex)
+                                                 )
+        expect(Jobs::Storage.instance.tables).to receive(:store_applicables) do |ac_apps|
+          expect(ac_apps.length).to eql(whens.length)
+          whens.each { |wh| expect(ac_apps).to include(wh) }
+        end
       end
 
 
       rv = job.perform(args)
       expect(rv).to eql(false)
+    end    
+  end
+
+  it "should always store the document, meta and effective (on any branch)" do
+    rand_array { Faker::Lorem.word }.each do |branch|
+      verify_storage(branch: branch)
     end
+  end
+  
+  it "should always store the document, meta and effective (on master)" do
+    verify_storage(branch: 'master')
+  end
+  
+  it "should not store the document, meta and effective if the rule exists (on production)" do
+    verify_storage(branch: 'production', should_store_rule: false)
+  end
+  
+  it "should store the document, meta and effective if the rule does not exist (on production)" do
+    verify_storage(branch: 'production', should_store_rule: true)
   end
 end

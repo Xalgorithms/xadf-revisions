@@ -38,11 +38,32 @@ module Jobs
 
     def initialize(doc_type)
       @doc_type = doc_type
+      @branch_fns = {
+        'production' => method(:perform_on_production),
+      }
+      @default_fn = method(:perform_on_any)
     end
     
     def perform(o)
       @classified = parse_and_classify(o)
+      @branch_fns.fetch(o.fetch('branch', nil), @default_fn).call
+      
+      false
+    end
 
+    private
+
+    def perform_on_any
+      store
+    end
+
+    def perform_on_production
+      Storage.instance.tables.unless_has_rule(@classified[:public_id], @classified[:meta][:branch]) do
+        store
+      end
+    end
+
+    def store
       Storage.instance.docs.store_rule(
         @doc_type,
         @classified[:public_id],
@@ -53,12 +74,8 @@ module Jobs
       store_effectives
 
       perform_additional(@classified)
-
-      false
     end
-
-    private
-
+    
     def parse_and_classify(o)
       parsed = send("parse_#{@doc_type}", o['data'])
       meta = {
