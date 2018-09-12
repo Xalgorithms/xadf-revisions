@@ -78,7 +78,7 @@ describe Jobs::AddRule do
   
   it "should always store the document, meta and effective (on master)" do
     verify_storage(
-      Jobs::AddRule, 'rule', method(:add_whens), method(:verify_applicable), branch: 'production'
+      Jobs::AddRule, 'rule', method(:add_whens), method(:verify_applicable), branch: 'master'
     )
   end
   

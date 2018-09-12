@@ -150,6 +150,10 @@ class Tables
   end
   
   def connect
+    if ENV.fetch('RACK_ENV', 'development') == 'test'
+      raise 'specs should not be running real Cassandra connections'
+    end
+    
     begin
       hosts = @env.get(:hosts)
       keyspace = @env.get(:keyspace)

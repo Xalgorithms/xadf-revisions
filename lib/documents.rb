@@ -50,6 +50,10 @@ class Documents
   end
 
   def connect
+    if ENV.fetch('RACK_ENV', 'development') == 'test'
+      raise 'specs should not be running real Mongo connections'
+    end
+    
     url = @env.get(:url)
     
     puts "> connecting to Mongo (url=#{url})"
