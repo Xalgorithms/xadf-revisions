@@ -27,11 +27,59 @@ require 'countries'
 require 'faker'
 require 'tzinfo'
 
+require_relative '../../jobs/storage'
+
 module Specs
   module Jobs
     module AddXalgoChecks
       include Radish::Randomness
-  
+      
+      def verify_storage(job_kl, rule_type, parsed_fn=nil, verify_fn=nil, props={})
+        expects = build_expects(props)
+        
+        expects.each do |ex|
+          args = build_args_from_expectation(ex)
+
+          job = job_kl.new
+
+          meta = build_expected_meta(ex)
+          public_id = make_id(rule_type, meta.slice(:ns, :name, :version).with_indifferent_access)
+          
+          parsed = build_parsed_from_expectation(ex)
+          parsed = parsed_fn.call(parsed, public_id) if parsed_fn
+
+          expect(job).to receive("parse_#{rule_type}").with(ex[:data]).and_return(parsed)
+
+          has_should_store_rule = props.key?(:should_store_rule)
+          should_store_rule = props[:should_store_rule]
+          if has_should_store_rule
+            receive_unless_has_rule = receive(:unless_has_rule).with(public_id, props[:branch])
+            receive_unless_has_rule = receive_unless_has_rule.and_yield if should_store_rule
+            
+            expect(::Jobs::Storage.instance.tables).to receive_unless_has_rule
+          end
+
+          if !has_should_store_rule || should_store_rule
+            expect(::Jobs::Storage.instance.docs).to receive(:store_rule).with(
+                                                     rule_type, public_id, meta, parsed
+                                                   )
+            
+            expect(::Jobs::Storage.instance.tables).to receive(:store_meta).with(
+                                                       meta.merge(rule_id: public_id)
+                                                     )
+
+            expect(::Jobs::Storage.instance.tables).to receive(:store_effectives).with(
+                                                       build_expected_effectives(public_id, ex)
+                                                       )
+
+            verify_fn.call if verify_fn
+          end
+
+          rv = job.perform(args)
+          expect(rv).to eql(false)
+        end
+      end
+      
       def build_expects(props={})
         # these country codes have discovered bugs in the code that
         # this will test

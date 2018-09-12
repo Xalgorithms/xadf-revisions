@@ -35,93 +35,64 @@ describe Jobs::AddRule do
   include Radish::Documents::Core
   include Radish::Randomness
 
-  def verify_storage(props={})
-    expects = build_expects(props)
-    
-    expects.each do |ex|
-      args = build_args_from_expectation(ex)
-      parsed = build_parsed_from_expectation(ex)
-
-      ver = get(parsed, 'meta.version')
-      meta = build_expected_meta(ex)
-      public_id = make_id('rule', meta.slice(:ns, :name, :version).with_indifferent_access)
-      
-      whens = rand_array { Faker::Lorem.word }.inject([]) do |arr, section|
-        arr + rand_array do
-          {
-            section: section,
-            key: Faker::Lorem.word,
-            op: ['eq', 'gt', 'gte', 'lt', 'lte'].sample,
-            val: Faker::Number.number(3).to_s,
-            rule_id: public_id,
-          }
-        end
+  def add_whens(parsed, public_id)
+    @whens = rand_array { Faker::Lorem.word }.inject([]) do |arr, section|
+      arr + rand_array do
+        {
+          section: section,
+          key: Faker::Lorem.word,
+          op: ['eq', 'gt', 'gte', 'lt', 'lte'].sample,
+          val: Faker::Number.number(3).to_s,
+          rule_id: public_id,
+        }
       end
+    end
 
-      parsed = parsed.merge('whens' => whens.inject({}) do |o, wh|
-                              section_whens = o.fetch(wh[:section], [])
-                              this_wh = {
-                                expr: {
-                                  left: { key: wh[:key] },
-                                  op: wh[:op],
-                                  right: { value: wh[:val] },
-                                }
-                              }
-                              o.merge(wh[:section] => section_whens + [this_wh])
-                            end.with_indifferent_access)
-
-      job = Jobs::AddRule.new
-
-      expect(job).to receive("parse_rule").with(ex[:data]).and_return(parsed)
-
-      has_should_store_rule = props.key?(:should_store_rule)
-      should_store_rule = props[:should_store_rule]
-      if has_should_store_rule
-        receive_unless_has_rule = receive(:unless_has_rule).with(public_id, props[:branch])
-        receive_unless_has_rule = receive_unless_has_rule.and_yield if should_store_rule
-        
-        expect(Jobs::Storage.instance.tables).to receive_unless_has_rule
-      end
-
-      if !has_should_store_rule || should_store_rule
-        expect(Jobs::Storage.instance.docs).to receive(:store_rule).with(
-                                                 'rule', public_id, meta, parsed
-                                               )
-        
-        expect(Jobs::Storage.instance.tables).to receive(:store_meta).with(
-                                                   meta.merge(rule_id: public_id)
-                                                 )
-
-        expect(Jobs::Storage.instance.tables).to receive(:store_effectives).with(
-                                                   build_expected_effectives(public_id, ex)
-                                                 )
-        expect(Jobs::Storage.instance.tables).to receive(:store_applicables) do |ac_apps|
-          expect(ac_apps.length).to eql(whens.length)
-          whens.each { |wh| expect(ac_apps).to include(wh) }
-        end
-      end
-
-
-      rv = job.perform(args)
-      expect(rv).to eql(false)
-    end    
+    parsed.merge('whens' => @whens.inject({}) do |o, wh|
+                   section_whens = o.fetch(wh[:section], [])
+                   this_wh = {
+                     expr: {
+                       left: { key: wh[:key] },
+                       op: wh[:op],
+                       right: { value: wh[:val] },
+                     }
+                   }
+                   o.merge(wh[:section] => section_whens + [this_wh])
+                 end.with_indifferent_access)
   end
 
+  def verify_applicable
+    expect(Jobs::Storage.instance.tables).to receive(:store_applicables) do |ac_apps|
+      expect(ac_apps.length).to eql(@whens.length)
+      @whens.each { |wh| expect(ac_apps).to include(wh) }
+    end
+  end
+  
   it "should always store the document, meta and effective (on any branch)" do
     rand_array { Faker::Lorem.word }.each do |branch|
-      verify_storage(branch: branch)
+      verify_storage(
+        Jobs::AddRule, 'rule', method(:add_whens), method(:verify_applicable), branch: branch
+      )
     end
   end
   
   it "should always store the document, meta and effective (on master)" do
-    verify_storage(branch: 'master')
+    verify_storage(
+      Jobs::AddRule, 'rule', method(:add_whens), method(:verify_applicable), branch: 'production'
+    )
   end
   
   it "should not store the document, meta and effective if the rule exists (on production)" do
-    verify_storage(branch: 'production', should_store_rule: false)
+    verify_storage(
+      Jobs::AddRule, 'rule', method(:add_whens), method(:verify_applicable),
+      branch: 'production', should_store_rule: false
+    )
   end
   
   it "should store the document, meta and effective if the rule does not exist (on production)" do
-    verify_storage(branch: 'production', should_store_rule: true)
+    verify_storage(
+      Jobs::AddRule, 'rule', method(:add_whens), method(:verify_applicable),
+      branch: 'production', should_store_rule: true
+    )
   end
 end
