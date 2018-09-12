@@ -257,18 +257,20 @@ describe Tables do
 
     types = ['rule', 'table']
     exes = rand_array do
-      {
+      ex = {
         ns: Faker::Lorem.word,
         name: Faker::Lorem.word,
         version: Faker::App.semantic_version,
         type: types.sample,
         branch: Faker::Lorem.word,
       }
+
+      ex.merge(id: make_id(ex[:type], ex.slice(:ns, :name, :version).with_indifferent_access))
     end
 
     exes.each do |ex|
       yielded = false
-      tables.if_has_rule(ex.with_indifferent_access) do
+      tables.if_has_rule(ex[:id], ex[:branch]) do
         yielded = true
       end
 
@@ -276,12 +278,11 @@ describe Tables do
     end
 
     queries = exes.map do |ex|
-      id = make_id(ex[:type], ex.slice(:ns, :name, :version).with_indifferent_access)
       ex = {
         tbl: 'rules',
         keys: ['rule_id'],
         conds: [
-          { key: 'rule_id', value: "'#{id}'" },
+          { key: 'rule_id', value: "'#{ex[:id]}'" },
           { key: 'branch', value: "'#{ex[:branch]}'" },
         ],
       }
@@ -296,18 +297,20 @@ describe Tables do
 
     types = ['rule', 'table']
     exes = rand_array do
-      {
+      ex = {
         ns: Faker::Lorem.word,
         name: Faker::Lorem.word,
         version: Faker::App.semantic_version,
         type: types.sample,
         branch: Faker::Lorem.word,
       }
+
+      ex.merge(id: make_id(ex[:type], ex.slice(:ns, :name, :version).with_indifferent_access))
     end
 
     exes.each do |ex|
       yielded = false
-      tables.unless_has_rule(ex.with_indifferent_access) do
+      tables.unless_has_rule(ex[:id], ex[:branch]) do
         yielded = true
       end
 
@@ -315,12 +318,11 @@ describe Tables do
     end
 
     queries = exes.map do |ex|
-      id = make_id(ex[:type], ex.slice(:ns, :name, :version).with_indifferent_access)
       ex = {
         tbl: 'rules',
         keys: ['rule_id'],
         conds: [
-          { key: 'rule_id', value: "'#{id}'" },
+          { key: 'rule_id', value: "'#{ex[:id]}'" },
           { key: 'branch', value: "'#{ex[:branch]}'" },
         ],
       }

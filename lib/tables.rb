@@ -73,12 +73,12 @@ class Tables
     query_repo_presence(clone_url, @empty_fn, &bl).join
   end
 
-  def if_has_rule(args, &bl)
-    query_rule_presence(args, @any_fn, &bl).join
+  def if_has_rule(rule_id, branch, &bl)
+    query_rule_presence(rule_id, branch, @any_fn, &bl).join
   end
   
-  def unless_has_rule(args, &bl)
-    query_rule_presence(args, @empty_fn, &bl).join
+  def unless_has_rule(rule_id, branch, &bl)
+    query_rule_presence(rule_id, branch, @empty_fn, &bl).join
   end
   
   private
@@ -98,17 +98,14 @@ class Tables
       &bl)
   end
   
-  def query_rule_presence(args, fn, &bl)
-    qargs = args.with_indifferent_access
-    rule_id = make_id(qargs.fetch('type', 'rule'), qargs)
-
+  def query_rule_presence(rule_id, branch, fn, &bl)
     query_if(
       'rules',
       fn,
       [:rule_id],
       {
         rule_id: { type: :string, value: rule_id },
-        branch: { type: :string, value: qargs.fetch('branch', 'master') },
+        branch: { type: :string, value: branch },
       },
       &bl)
   end
