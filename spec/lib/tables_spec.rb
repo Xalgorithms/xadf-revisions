@@ -214,12 +214,12 @@ describe Tables do
     validate = build_query_validation(tables, [rand_document])
     url = Faker::Internet.url
 
-    found = false
+    yielded = false
     tables.if_has_repository(url) do
-      found = true
+      yielded = true
     end
 
-    expect(found).to eql(true)
+    expect(yielded).to eql(true)
     ex = {
       tbl: 'repositories',
       keys: ['clone_url'],
@@ -235,12 +235,12 @@ describe Tables do
     validate = build_query_validation(tables, [])
     url = Faker::Internet.url
 
-    found = false
+    yielded = false
     tables.unless_has_repository(url) do
-      found = true
+      yielded = true
     end
 
-    expect(found).to eql(true)
+    expect(yielded).to eql(true)
     ex = {
       tbl: 'repositories',
       keys: ['clone_url'],
@@ -267,12 +267,12 @@ describe Tables do
     end
 
     exes.each do |ex|
-      found = false
+      yielded = false
       tables.if_has_rule(ex.with_indifferent_access) do
-        found = true
+        yielded = true
       end
 
-      expect(found).to eql(true)
+      expect(yielded).to eql(true)
     end
 
     queries = exes.map do |ex|
@@ -306,12 +306,12 @@ describe Tables do
     end
 
     exes.each do |ex|
-      found = false
-      tables.if_has_rule(ex.with_indifferent_access) do
-        found = true
+      yielded = false
+      tables.unless_has_rule(ex.with_indifferent_access) do
+        yielded = true
       end
 
-      expect(found).to eql(false)
+      expect(yielded).to eql(true)
     end
 
     queries = exes.map do |ex|
