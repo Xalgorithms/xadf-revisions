@@ -44,17 +44,38 @@ describe Tables do
     def initialize
       @queries = []
     end
+
+    def maybe_capture_insert(q)
+      m = /INSERT INTO interlibr\.(.+) \((.+)\) VALUES \((.+)\)/.match(q)
+      {
+        tbl: m[1],
+        keys: m[2].split(',').sort,
+        vals: m[3].split(',').map { |s| s[1..-2] }.sort,
+        op: :insert,
+      } if m
+    end
+
+    def maybe_capture_update(q)
+      m = /UPDATE interlibr\.(.+) SET (.+\=.+) WHERE (.+)/.match(q)
+      {
+        tbl: m[1],
+        updates: m[2].split(/,\s*/).map do |s|
+          (k, v) = s.split('=')
+          { key: k, val: v }
+        end,
+        wheres: m[3].split(' AND ').map do |s|
+          (k, v) = s.split('=')
+          { key: k, val: v }
+        end,
+        op: :update
+      } if m
+    end
     
     def capture(q)
       q.split(';').each do |sub_q|
-        m = /INSERT INTO interlibr\.(.+) \((.+)\) VALUES \((.+)\)/.match(sub_q)
-        if m
-          @queries << {
-            tbl: m[1],
-            keys: m[2].split(',').sort,
-            vals: m[3].split(',').map { |s| s[1..-2] }.sort
-          }
-        end
+        cap = maybe_capture_insert(sub_q)
+        cap = maybe_capture_update(sub_q) if !cap
+        @queries << cap if cap
       end
     end
   end
@@ -88,11 +109,11 @@ describe Tables do
     stm = double('Fake: Cassandra statement')
     
     expect(tables).to receive(:session).at_least(:once).and_return(session)
-    expect(session).to receive(:prepare) do |q|
+    expect(session).to receive(:prepare).at_least(:once) do |q|
       validate.capture(q)
       stm
     end
-    expect(session).to receive(:execute).with(stm)
+    expect(session).to receive(:execute).at_least(:once).with(stm)
 
     validate
   end
@@ -147,8 +168,8 @@ describe Tables do
     end
   end
 
-  def build_expectation_from_doc(tbl, doc)
-    { tbl: tbl, keys: doc.keys.map(&:to_s).sort, vals: doc.values.sort }
+  def build_insert_expect_from_doc(tbl, doc)
+    { tbl: tbl, keys: doc.keys.map(&:to_s).sort, vals: doc.values.sort, op: :insert }
   end
 
   it 'should store repositories' do
@@ -158,7 +179,7 @@ describe Tables do
       tables = Tables.new
       validate = build_insert_validation(tables)
       tables.store_repository(o)
-      check_first_insert(validate, build_expectation_from_doc('repositories', o))
+      check_first_insert(validate, build_insert_expect_from_doc('repositories', o))
     end
   end
   
@@ -169,7 +190,7 @@ describe Tables do
       tables = Tables.new
       validate = build_insert_validation(tables)
       tables.store_meta(meta)
-      check_first_insert(validate, build_expectation_from_doc('rules', meta))
+      check_first_insert(validate, build_insert_expect_from_doc('rules', meta))
     end
   end
 
@@ -185,10 +206,19 @@ describe Tables do
       tables.store_applicables(apps)
       
       exes = apps.map do |app|
-        build_expectation_from_doc('when_keys', app.slice(*when_keys))
+        {
+          op: :update,
+          tbl: 'when_keys',
+          updates: [{key: 'refs', val: 'refs + 1'}],
+          wheres: [
+            { key: 'section', val: "'#{app[:section]}'" },
+            { key: 'key',     val: "'#{app[:key]}'" },
+          ]
+        }
       end + apps.map do |app|
-        build_expectation_from_doc('whens', app)
+        build_insert_expect_from_doc('whens', app)
       end
+
       check_many_inserts(validate, exes)
     end
   end
@@ -203,8 +233,9 @@ describe Tables do
       tables.store_effectives(effs)
       
       exes = effs.map do |eff|
-        build_expectation_from_doc('effective', eff)
+        build_insert_expect_from_doc('effective', eff)
       end
+
       check_many_inserts(validate, exes)
     end
   end

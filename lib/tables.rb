@@ -42,10 +42,13 @@ class Tables
   end
 
   def store_applicables(apps)
-    within_batch do
-      build_inserts('when_keys', [:section, :key], apps) + 
+    if apps.any?
+      execute_when_keys_updates(apps, '+1')
+
+      within_batch do
         build_inserts('whens',  [:section, :key, :op, :val, :rule_id], apps)
-    end if apps.any?
+      end
+    end
   end
   
   def store_effectives(effs)
@@ -142,7 +145,7 @@ class Tables
     where = where_conds.empty? ? '' : "WHERE #{where_conds}"
     "SELECT #{cols} FROM #{keyspace}.#{tbl} #{where};"
   end
-  
+
   def build_inserts(tn, ks, os)
     os.map do |o|
       build_insert(tn, ks, o)
@@ -175,6 +178,15 @@ class Tables
       puts '! failed to connect to cassandra'
       p e
       nil
+    end
+  end
+
+  def execute_when_keys_updates(os, inc)
+    keyspace = @env.get(:keyspace)
+    os.each do |o|
+      execute do
+        "UPDATE #{keyspace}.when_keys SET refs=refs#{inc} WHERE section='#{o[:section]}' AND key='#{o[:key]}'"
+      end
     end
   end
 
