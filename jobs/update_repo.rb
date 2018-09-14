@@ -28,6 +28,7 @@ module Jobs
     include Sidekiq::Worker
 
     def perform(o)
+      p [:update_repo, o]
       false
     end
   end

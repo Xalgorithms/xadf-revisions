@@ -59,26 +59,145 @@ describe 'Application' do
   end
 
   it 'should accept POST of /events when the github event is push' do
-    payload = rand_document
-    payload_s = MultiJson.encode(payload)
+    exes = [
+      {
+        fn: 'branch.created',
+        args: {
+          branch: 'production',
+          url: 'https://github.com/Xalgorithms/testing-rules.git',
+          what: :branch_created,
+        },
+      },
+      {
+        fn: 'branch.deleted',
+        args: {
+          branch: 'production',
+          url: 'https://github.com/Xalgorithms/testing-rules.git',
+          what: :branch_removed,
+        },
+      },
+      {
+        fn: 'existing.files.updated',
+        args: {
+          branch: 'master',
+          url: 'https://github.com/Xalgorithms/testing-rules.git',
+          what: :branch_updated,
+          changes: [
+            {
+              previous_commit_id: 'cf83f6ace03c848b8d0312ba9a7b6b0d03d35ba9',
+              commit_id: '295af90dfbb5d694bd5b91ecc6e3eca1b5ad2258',
+              modified: [
+                "org.xalgorithms.examples.a_plus_b/a_plus_b.rule",
+                "org.xalgorithms.examples.a_plus_b/all_bs.table",
+              ],
+              committer: { name: 'Don Kelly', email: 'karfai@gmail.com' }
+            },
+          ],
+        },
+      },
+      {
+        fn: 'file.added',
+        args: {
+          branch: 'master',
+          url: 'https://github.com/Xalgorithms/testing-rules.git',
+          what: :branch_updated,
+          changes: [
+            {
+              previous_commit_id: '295af90dfbb5d694bd5b91ecc6e3eca1b5ad2258',
+              commit_id: 'fbccee99d5bc373d43081fbe1ced4be90913e6f0',
+              added: [
+                "org.xalgorithms.examples.a_plus_b/more.json"
+              ],
+              committer: { name: 'Don Kelly', email: 'karfai@gmail.com' }
+            },
+          ],
+        },
+      },
+      {
+        fn: 'file.deleted',
+        args: {
+          branch: 'master',
+          url: 'https://github.com/Xalgorithms/testing-rules.git',
+          what: :branch_updated,
+          changes: [
+            {
+              previous_commit_id: 'fbccee99d5bc373d43081fbe1ced4be90913e6f0',
+              commit_id: '4d11567bb9461e6404f3a2128022d3c5b329ac46',
+              removed: [
+                "org.xalgorithms.examples.a_plus_b/more.json"
+              ],
+              committer: { name: 'Don Kelly', email: 'karfai@gmail.com' }
+            },
+          ],
+        },
+      },
+      {
+        fn: 'multiple.commits',
+        args: {
+          branch: 'master',
+          url: 'https://github.com/Xalgorithms/testing-rules.git',
+          what: :branch_updated,
+          changes: [
+            {
+              previous_commit_id: 'cc6c383d4fa9b1fc72b5ec4b1fb078ac8d0ab5a8',
+              commit_id: '5d37ad142d060b88d7c7f8fcb2b1389077a11db0',
+              added: [
+                "org.xalgorithms.examples.a_plus_b/more.json"
+              ],
+              committer: { name: 'Don Kelly', email: 'karfai@gmail.com' }
+            },
+            {
+              previous_commit_id: '5d37ad142d060b88d7c7f8fcb2b1389077a11db0',
+              commit_id: '585db8863d0aa00b945878d340ce55e0ecd38ac4',
+              added: [
+                "org.xalgorithms.examples.a_plus_b/even.more.json"
+              ],
+              removed: [
+                "org.xalgorithms.examples.a_plus_b/more.json"
+              ],
+              committer: { name: 'Don Kelly', email: 'karfai@gmail.com' }
+            },
+          ],
+        },
+      },
+      {
+        fn: 'package.added',
+        args: {
+          branch: 'master',
+          url: 'https://github.com/Xalgorithms/testing-rules.git',
+          what: :branch_updated,
+          changes: [
+            {
+              previous_commit_id: '4d11567bb9461e6404f3a2128022d3c5b329ac46',
+              commit_id: 'ed31826b864f2601ce11344d77cfdb7f2f9b1b84',
+              added: [
+                "org.xalgorithms.examples.a_plus_b2/a_plus_b.rule",
+                "org.xalgorithms.examples.a_plus_b2/all_bs.json",
+                "org.xalgorithms.examples.a_plus_b2/all_bs.table"
+              ],
+              committer: { name: 'Don Kelly', email: 'karfai@gmail.com' }
+            },
+          ],
+        },
+      },
+    ]
+
     secret = '1234'
-    sig = "sha1=#{OpenSSL::HMAC.hexdigest(OpenSSL::Digest.new('sha1'), secret, payload_s)}"
+    exes.each do |ex|
+      payload_s = IO.read("./spec/files/github/#{ex[:fn]}.json")
+      sig = "sha1=#{OpenSSL::HMAC.hexdigest(OpenSSL::Digest.new('sha1'), secret, payload_s)}"
+      ex_args = { 'name' => 'update', 'thing' => 'repository', 'args' => ex[:args].with_indifferent_access }
 
-    ex = {
-      name: 'update',
-      thing: 'repository',
-      args: payload,
-    }
-    
-    actions = double('Fake: actions')
-    expect(Services::Actions).to receive(:instance).and_return(actions)
-    expect(actions).to receive(:execute).with(ex)
+      actions = double('Fake: actions')
+      expect(Services::Actions).to receive(:instance).and_return(actions)
+      expect(actions).to receive(:execute).with(ex_args)
 
-    ENV['GITHUB_SECRET'] = secret
-    post('/events', payload_s, 'HTTP_X_HUB_SIGNATURE' => sig, 'HTTP_X_GITHUB_EVENT' => 'push')
+      ENV['GITHUB_SECRET'] = secret
+      post('/events', payload_s, 'HTTP_X_HUB_SIGNATURE' => sig, 'HTTP_X_GITHUB_EVENT' => 'push')
 
-    expect(last_response).to be_ok
-    expect(last_response_json).to eql('status' => 'ok')        
+      expect(last_response).to be_ok
+      expect(last_response_json).to eql('status' => 'ok')
+    end
   end
 
   it 'should not accept POST of /events when the event is not push' do

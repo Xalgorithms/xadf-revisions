@@ -72,6 +72,51 @@ end
 #   json({ id: documents.store_unpackaged_table(o) })
 # end
 
+def determine_branch(gho)
+  gho.fetch('ref', '').split('/').last
+end
+
+def determine_url(gho)
+  gho.fetch('repository', {}).fetch('clone_url')
+end
+
+def determine_what_happened(gho)
+  created = gho.fetch('created', false)
+  deleted = gho.fetch('deleted', false)
+
+  if created
+    :branch_created
+  elsif deleted
+    :branch_removed
+  else
+    :branch_updated
+  end
+end
+
+def determine_changes(gho)
+  pcid = gho.fetch('before', nil)
+  gho.fetch('commits', []).map do |co|
+    cid = co.fetch('id', '')
+    ch = {
+      previous_commit_id: pcid,
+      commit_id: cid,
+      committer: {
+        name: co['committer']['name'],
+        email: co['committer']['email'],
+      }
+    }
+
+    ch = ['added', 'removed', 'modified'].inject(ch) do |o, k|
+      fns = co.fetch(k, [])
+      fns.any? ? o.merge(k.to_sym => fns) : o
+    end
+
+    pcid = cid
+
+    ch
+  end
+end
+
 post '/events' do
   body = request.body.read
   # we really just need to handle the "push" event - it tells us what we need to know about create/delete.
@@ -92,8 +137,17 @@ post '/events' do
     halt
   end
   
-  o = JSON.parse(body)
-  Services::Actions.instance.execute(name: 'update', thing: 'repository', args: o)
+  gho = JSON.parse(body)
+  changes = determine_changes(gho)
+  args = {
+    branch: determine_branch(gho),
+    url: determine_url(gho),
+    what: determine_what_happened(gho),
+  }.tap do |args|
+    args[:changes] = changes if changes.any?
+  end
+
+  Services::Actions.instance.execute('name' => 'update', 'thing' => 'repository', 'args' => args.with_indifferent_access)
   json(status: 'ok')
 end
 
