@@ -25,13 +25,14 @@ require 'multi_json'
 require 'rugged'
 
 class GitHub
-  def get(url)
-    puts "> fetching (url=#{url})"
+  def get(url, branch=nil)
+    puts "> fetching (url=#{url}; branch=#{branch})"
     
     path = Pathname.new(URI.parse(url).path)
     dn = path.basename('.git').to_s
     repo = Rugged::Repository.clone_at(url, dn, bare: true)
-    rv = ['master', 'production'].inject([]) do |contents_a, n|
+    branches = branch ? [branch] : ['master', 'production']
+    rv = branches.inject([]) do |contents_a, n|
       br = repo.branches[n]
       if br
         nses = get_namespaces(repo, br, n)

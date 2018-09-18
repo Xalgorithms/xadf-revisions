@@ -81,7 +81,7 @@ describe GitHub do
     end
   end
   
-  def build_fake_repo(fake_branches)
+  def build_fake_repo(fake_branches, clones=1)
     url = 'https://github.com/Xalgorithms/testing-rules.git'
     path = 'testing-rules'
 
@@ -92,7 +92,7 @@ describe GitHub do
       expect(branches).to receive('[]').with(n.to_s).and_return(build_fake_branch(repo, n, br_contents))
     end
     expect(repo).to receive(:branches).twice.and_return(branches)
-    expect(Rugged::Repository).to receive(:clone_at).with(url, path, bare: true).and_return(repo)
+    expect(Rugged::Repository).to receive(:clone_at).exactly(clones).times.with(url, path, bare: true).and_return(repo)
 
     { repo: repo, url: url, path: path }
   end
@@ -105,7 +105,7 @@ describe GitHub do
     expect(ac).to eql(nil)
   end
 
-  it 'should enumerate top-level directories as namespaces and yield the valid contents' do
+  def build_contents
     master_contents = {
       nses: {
         'master_ns0' => [
@@ -144,10 +144,11 @@ describe GitHub do
       },
     }
 
-    contents = { master: master_contents, production: prod_contents }
-    
-    repo = build_fake_repo(contents)
-    ex = contents.inject([]) do |a, (br, br_contents)|
+    { master: master_contents, production: prod_contents }    
+  end
+
+  def build_expects_from_contents(contents, repo_url)
+    contents.inject([]) do |a, (br, br_contents)|
       a + br_contents.fetch(:whitelist, br_contents[:nses].keys).inject([]) do |files_a, ns|
         files_a + br_contents[:nses][ns].map do |fn|
           path = Pathname.new(fn)
@@ -156,18 +157,40 @@ describe GitHub do
             ns: ns,
             name: path.basename(path.extname).to_s,
             type: path.extname[1..-1],
-            origin: repo[:url],
+            origin: repo_url,
             branch: br.to_s,
             data: "contents of #{fn}",
           }
         end
       end
     end
+  end
+  
+  it 'should enumerate top-level directories as namespaces and yield the valid contents' do
+    contents = build_contents
+    
+    repo = build_fake_repo(contents)
+    ex = build_expects_from_contents(contents, repo[:url])
 
     expect(FileUtils).to receive(:rm_rf).with(repo[:path])
     
     gh = GitHub.new
     ac = gh.get(repo[:url])
     expect(ac).to eql(ex)
+  end
+
+  it 'should only enumerate specified branches' do
+    contents = build_contents
+    
+    repo = build_fake_repo(contents, 2)
+    [:master, :production].each do |branch_name|
+      ex = build_expects_from_contents(contents.slice(branch_name), repo[:url])
+
+      expect(FileUtils).to receive(:rm_rf).with(repo[:path])
+    
+      gh = GitHub.new
+      ac = gh.get(repo[:url], branch_name.to_s)
+      expect(ac).to eql(ex)
+    end
   end
 end
