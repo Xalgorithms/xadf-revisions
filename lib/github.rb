@@ -38,6 +38,30 @@ class GitHub
       rv.any? ? rv : nil
     end
   end
+
+  def get_changed_files(url, branch_name, prev_commit_id, commit_id, changes)
+    with_repo(url) do |repo|
+      changes.inject([]) do |a, (change, fns)|
+        tree_id = change == :removed ? prev_commit_id : commit_id
+        tr = repo.lookup(tree_id).tree
+
+        props = {
+          origin: url,
+          branch: branch_name,
+          op: change,
+        }
+        
+        a + fns.map do |fn|
+          ref = tr.path(fn)
+          pn = Pathname.new(fn)
+          this_props = {
+            ns: pn.dirname.to_s
+          }.merge(props)
+          populate_file_content(repo, ref).merge(this_props)
+        end
+      end
+    end
+  end
   
   # def event(name, o, &bl)
   #   @events ||= {
@@ -50,7 +74,7 @@ class GitHub
   # end
 
   private
-
+  
   def with_repo(url)
     puts "> fetching (url=#{url})"
     

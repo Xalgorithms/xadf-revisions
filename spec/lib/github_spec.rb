@@ -82,24 +82,31 @@ describe GitHub do
     end
   end
   
-  def build_fake_repo(fake_branches, clones=1)
+  def build_fake_repo(clones=1)
     url = 'https://github.com/Xalgorithms/testing-rules.git'
     path = 'testing-rules'
 
     repo = double('Rugged::Repository')
-    branches = double('branches')
-
-    fake_branches.each do |n, br_contents|
-      expect(branches).to receive('[]').with(n.to_s).and_return(build_fake_branch(repo, n, br_contents))
-    end
-    expect(repo).to receive(:branches).twice.and_return(branches)
+    yield(repo)
+    
     expect(Rugged::Repository).to receive(:clone_at).exactly(clones).times.with(url, path, bare: true).and_return(repo)
 
     { repo: repo, url: url, path: path }
   end
+
+  def build_fake_repo_with_branches(fake_branches, clones=1)
+    build_fake_repo(clones) do |fake_repo|
+      branches = double('branches')
+      
+      fake_branches.each do |n, br_contents|
+        expect(branches).to receive('[]').with(n.to_s).and_return(build_fake_branch(fake_repo, n, br_contents))
+      end
+      expect(fake_repo).to receive(:branches).twice.and_return(branches)
+    end
+  end
   
   it 'should yield nothing if branches do not exist' do
-    repo = build_fake_repo(master: nil, production: nil)
+    repo = build_fake_repo_with_branches(master: nil, production: nil)
 
     gh = GitHub.new
     ac = gh.get(repo[:url])
@@ -170,7 +177,7 @@ describe GitHub do
   it 'should enumerate top-level directories as namespaces and yield the valid contents' do
     contents = build_contents
     
-    repo = build_fake_repo(contents)
+    repo = build_fake_repo_with_branches(contents)
     ex = build_expects_from_contents(contents, repo[:url])
 
     expect(FileUtils).to receive(:rm_rf).with(repo[:path])
@@ -183,7 +190,7 @@ describe GitHub do
   it 'should only enumerate specified branches' do
     contents = build_contents
     
-    repo = build_fake_repo(contents, 2)
+    repo = build_fake_repo_with_branches(contents, 2)
     [:master, :production].each do |branch_name|
       ex = build_expects_from_contents(contents.slice(branch_name), repo[:url])
 
@@ -192,6 +199,89 @@ describe GitHub do
       gh = GitHub.new
       ac = gh.get(repo[:url], branch_name.to_s)
       expect(ac).to eql(ex)
+    end
+  end
+
+  def build_ref_expects(ex, tree, repo)
+    base_name = "#{ex[:name]}.#{ex[:type]}"
+    path = File.join(ex[:ns], base_name)
+    oid = Faker::Number.hexadecimal(40)
+    
+    ref = double("fake/ref (#{path})")
+    expect(ref).to receive('[]').with(:name).and_return(base_name)
+    expect(ref).to receive('[]').with(:oid).and_return(oid)
+
+    obj = double("fake/obj (#{path})")
+    expect(obj).to receive(:data).and_return(ex[:data])
+    
+    expect(tree).to receive(:path).with(path).and_return(ref)
+    expect(repo).to receive(:read).with(oid).and_return(obj)
+  end
+  
+  it 'should yield changed files' do
+    types = ['json', 'rule', 'table']
+             
+    rand_array do
+      {
+        branch: Faker::Lorem.word,
+        prev_commit_id: Faker::Number.hexadecimal(40),
+        commit_id: Faker::Number.hexadecimal(40),
+        changes: [:added, :updated, :removed].inject({}) do |o, op|
+          o.merge(op => rand_array(4) do
+                    {
+                      ns: Faker::Lorem.word,
+                      name: Faker::Lorem.word,
+                      type: types.sample,
+                      data: Faker::Lorem.paragraph,
+                    }
+                  end)
+        end
+      }
+    end.each do |ex|
+      repo = build_fake_repo do |fake_repo|
+        curr_tree = double("fake/tree/curr")
+
+        prev_count = ex[:changes][:removed].length
+        curr_count = ex[:changes][:added].length + ex[:changes][:updated].length
+
+        prev_tree = double("fake/tree/prev")
+        prev_o = double("fake/o/prev")
+        expect(prev_o).to receive(:tree).at_least(:once).and_return(prev_tree)
+
+        curr_tree = double("fake/tree/curr")
+        curr_o = double("fake/o/curr")
+        expect(curr_o).to receive(:tree).at_least(:once).and_return(curr_tree)
+        
+        expect(fake_repo).to receive(:lookup).with(ex[:prev_commit_id]).at_least(:once).and_return(prev_o)
+        expect(fake_repo).to receive(:lookup).with(ex[:commit_id]).at_least(:once).and_return(curr_o)
+
+        changes = ex[:changes]
+        changes[:removed].each do |o|
+          build_ref_expects(o, prev_tree, fake_repo)
+        end
+
+        (changes[:added] + changes[:updated]).each do |o|
+          build_ref_expects(o, curr_tree, fake_repo)
+        end
+      end
+
+      gh = GitHub.new
+      changes = ex[:changes].inject({}) do |o, (op, fns)|
+        o.merge(op => fns.map do |o|
+                  File.join(o[:ns], "#{o[:name]}.#{o[:type]}")
+                end)
+      end
+      
+      ac = gh.get_changed_files(
+        repo[:url], ex[:branch], ex[:prev_commit_id], ex[:commit_id], changes
+      )
+
+      expected = ex[:changes].inject([]) do |a, (op, os)|
+        a + os.map do |o|
+          o.merge(op: op, branch: ex[:branch], origin: repo[:url])
+        end
+      end
+      expect(ac).to eql(expected)
     end
   end
 end
