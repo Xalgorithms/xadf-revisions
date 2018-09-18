@@ -34,6 +34,7 @@ describe GitHub do
       target = double("Fake target: #{name}")
       tree = double("Fake tree: #{name}")
 
+      expect(br).to receive(:name).at_least(:once).and_return(name.to_s)
       expect(br).to receive(:target).at_least(:once).and_return(target)
       expect(target).to receive(:tree).at_least(:once).and_return(tree)
 

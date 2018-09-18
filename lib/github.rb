@@ -26,40 +26,17 @@ require 'rugged'
 
 class GitHub
   def get(url, branch=nil)
-    puts "> fetching (url=#{url}; branch=#{branch})"
-    
-    path = Pathname.new(URI.parse(url).path)
-    dn = path.basename('.git').to_s
-    repo = Rugged::Repository.clone_at(url, dn, bare: true)
-    branches = branch ? [branch] : ['master', 'production']
-    rv = branches.inject([]) do |contents_a, n|
-      br = repo.branches[n]
-      if br
-        nses = get_namespaces(repo, br, n)
-        contents_a + nses.inject([]) do |ns_a, ns|
-          ref = br.target.tree.path(ns)
-          tr = repo.lookup(ref[:oid])
-          ns_a + tr.map do |f_ref|
-            path = Pathname.new(f_ref[:name])
-            {
-              ns: ns,
-              name: path.basename(path.extname).to_s,
-              type: path.extname[1..-1],
-              origin: url,
-              branch: n,
-              data: repo.read(f_ref[:oid]).data
-            }
-          end
+    with_repo(url) do |repo|
+      branch_names = branch ? [branch] : ['master', 'production']
+      rv = enumerate_namespaces_by_branches(repo, branch_names).inject([]) do |a, ns|
+        props = { origin: url, branch: ns[:branch].name, ns: ns[:name] }
+        a + ns[:tree].map do |ref|
+          props.merge(populate_file_content(repo, ref))
         end
-      else
-        puts "# branch does not exist (n=#{n})"
-        contents_a
       end
+      
+      rv.any? ? rv : nil
     end
-
-    FileUtils.rm_rf(dn)
-
-    rv.any? ? rv : nil
   end
   
   # def event(name, o, &bl)
@@ -74,13 +51,44 @@ class GitHub
 
   private
 
-  def get_namespaces(repo, br, br_name)
+  def with_repo(url)
+    puts "> fetching (url=#{url})"
+    
+    path = Pathname.new(URI.parse(url).path)
+    dn = path.basename('.git').to_s
+    rv = yield(Rugged::Repository.clone_at(url, dn, bare: true))
+
+    FileUtils.rm_rf(dn)
+
+    rv
+  end
+
+  def populate_file_content(repo, ref)
+    path = Pathname.new(ref[:name])
+    {
+      name: path.basename(path.extname).to_s,
+      type: path.extname[1..-1],
+      data: repo.read(ref[:oid]).data
+    }
+  end
+  
+  def enumerate_namespaces_by_branches(repo, branch_names)
+    branch_names.inject([]) do |a, bn|
+      br = repo.branches[bn]
+      br ? a + [br] : a
+    end.inject([]) do |a, br|
+      a + get_namespaces_on_branch(repo, br).map do |ns|
+        ref = br.target.tree.path(ns)
+        { name: ns, tree: repo.lookup(ref[:oid]), branch: br }
+      end
+    end
+  end
+
+  def get_namespaces_on_branch(repo, br)
     begin
       o = br.target.tree.path('namespaces.txt')
-      puts "# namespaces.txt found (n=#{br_name})"
       repo.read(o[:oid]).data.split("\n")
     rescue Rugged::TreeError => e
-      puts "# namespaces.txt not found (n=#{br_name})"
       nses = []
       br.target.tree.each_tree do |tr|
         nses << tr[:name]
