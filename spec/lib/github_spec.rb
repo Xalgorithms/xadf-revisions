@@ -226,7 +226,7 @@ describe GitHub do
         branch: Faker::Lorem.word,
         prev_commit_id: Faker::Number.hexadecimal(40),
         commit_id: Faker::Number.hexadecimal(40),
-        changes: [:added, :updated, :removed].inject({}) do |o, op|
+        changes: [:added, :modified, :removed].inject({}) do |o, op|
           o.merge(op => rand_array(4) do
                     {
                       ns: Faker::Lorem.word,
@@ -242,7 +242,7 @@ describe GitHub do
         curr_tree = double("fake/tree/curr")
 
         prev_count = ex[:changes][:removed].length
-        curr_count = ex[:changes][:added].length + ex[:changes][:updated].length
+        curr_count = ex[:changes][:added].length + ex[:changes][:modified].length
 
         prev_tree = double("fake/tree/prev")
         prev_o = double("fake/o/prev")
@@ -260,7 +260,7 @@ describe GitHub do
           build_ref_expects(o, prev_tree, fake_repo)
         end
 
-        (changes[:added] + changes[:updated]).each do |o|
+        (changes[:added] + changes[:modified]).each do |o|
           build_ref_expects(o, curr_tree, fake_repo)
         end
       end
@@ -273,7 +273,8 @@ describe GitHub do
       end
       
       ac = gh.get_changed_files(
-        repo[:url], ex[:branch], ex[:prev_commit_id], ex[:commit_id], changes
+        repo[:url], ex[:branch],
+        changes.merge(previous_commit_id: ex[:prev_commit_id], commit_id: ex[:commit_id])
       )
 
       expected = ex[:changes].inject([]) do |a, (op, os)|

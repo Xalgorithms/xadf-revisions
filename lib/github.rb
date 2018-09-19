@@ -39,25 +39,23 @@ class GitHub
     end
   end
 
-  def get_changed_files(url, branch_name, prev_commit_id, commit_id, changes)
+  def get_changed_files(url, branch_name, changes)
     with_repo(url) do |repo|
-      changes.inject([]) do |a, (change, fns)|
-        tree_id = change == :removed ? prev_commit_id : commit_id
+      ops = [:added, :modified, :removed]
+      ops.inject([]) do |a, op|
+        tree_id = op == :removed ? changes[:previous_commit_id] : changes[:commit_id]
         tr = repo.lookup(tree_id).tree
 
         props = {
           origin: url,
           branch: branch_name,
-          op: change,
+          op: op,
         }
-        
-        a + fns.map do |fn|
+
+        a + changes.fetch(op, []).map do |fn|
           ref = tr.path(fn)
           pn = Pathname.new(fn)
-          this_props = {
-            ns: pn.dirname.to_s
-          }.merge(props)
-          populate_file_content(repo, ref).merge(this_props)
+          populate_file_content(repo, ref).merge(props).merge(ns: pn.dirname.to_s)
         end
       end
     end
