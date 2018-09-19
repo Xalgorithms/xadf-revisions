@@ -85,11 +85,11 @@ def determine_what_happened(gho)
   deleted = gho.fetch('deleted', false)
 
   if created
-    :branch_created
+    'branch_created'
   elsif deleted
-    :branch_removed
+    'branch_removed'
   else
-    :branch_updated
+    'branch_updated'
   end
 end
 
@@ -98,17 +98,17 @@ def determine_changes(gho)
   gho.fetch('commits', []).map do |co|
     cid = co.fetch('id', '')
     ch = {
-      previous_commit_id: pcid,
-      commit_id: cid,
-      committer: {
-        name: co['committer']['name'],
-        email: co['committer']['email'],
+      'previous_commit_id' => pcid,
+      'commit_id'          => cid,
+      'committer'          => {
+        'name'  => co['committer']['name'],
+        'email' => co['committer']['email'],
       }
     }
-
+    
     ch = ['added', 'removed', 'modified'].inject(ch) do |o, k|
       fns = co.fetch(k, [])
-      fns.any? ? o.merge(k.to_sym => fns) : o
+      fns.any? ? o.merge(k => fns) : o
     end
 
     pcid = cid
@@ -117,12 +117,12 @@ def determine_changes(gho)
   end
 end
 
+# NOTE: all requests following the app -> actions -> (job) path use
+# string keys this is not NECESSARY but since SOME of the data comes
+# from outside JSON requests, it is consistency
+
 post '/events' do
   body = request.body.read
-  # we really just need to handle the "push" event - it tells us what we need to know about create/delete.
-  # create: { "before"=>"0000000000000000000000000000000000000000", "after"=>"444351339beb58b82a82a946286c3ebe0d2e6460", "created"=>true, "deleted"=>false }
-  # delete: { "before"=>"444351339beb58b82a82a946286c3ebe0d2e6460", "after"=>"0000000000000000000000000000000000000000", "created"=>false, "deleted"=>true }
-  #
 
   if !request.env.key?('HTTP_X_HUB_SIGNATURE') || !verify(body, request.env['HTTP_X_HUB_SIGNATURE'])
     status(403)
@@ -139,15 +139,16 @@ post '/events' do
   
   gho = JSON.parse(body)
   changes = determine_changes(gho)
+
   args = {
-    branch: determine_branch(gho),
-    url: determine_url(gho),
-    what: determine_what_happened(gho),
+    'branch' => determine_branch(gho),
+    'url'    => determine_url(gho),
+    'what'   => determine_what_happened(gho),
   }.tap do |args|
-    args[:changes] = changes if changes.any?
+    args['changes'] = changes if changes.any?
   end
 
-  Services::Actions.instance.execute('name' => 'update', 'thing' => 'repository', 'args' => args.with_indifferent_access)
+  Services::Actions.instance.execute('name' => 'update', 'thing' => 'repository', 'args' => args)
   json(status: 'ok')
 end
 

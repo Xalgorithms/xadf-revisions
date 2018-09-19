@@ -65,7 +65,7 @@ describe 'Application' do
         args: {
           branch: 'production',
           url: 'https://github.com/Xalgorithms/testing-rules.git',
-          what: :branch_created,
+          what: 'branch_created',
         },
       },
       {
@@ -73,7 +73,7 @@ describe 'Application' do
         args: {
           branch: 'production',
           url: 'https://github.com/Xalgorithms/testing-rules.git',
-          what: :branch_removed,
+          what: 'branch_removed',
         },
       },
       {
@@ -81,7 +81,7 @@ describe 'Application' do
         args: {
           branch: 'master',
           url: 'https://github.com/Xalgorithms/testing-rules.git',
-          what: :branch_updated,
+          what: 'branch_updated',
           changes: [
             {
               previous_commit_id: 'cf83f6ace03c848b8d0312ba9a7b6b0d03d35ba9',
@@ -100,7 +100,7 @@ describe 'Application' do
         args: {
           branch: 'master',
           url: 'https://github.com/Xalgorithms/testing-rules.git',
-          what: :branch_updated,
+          what: 'branch_updated',
           changes: [
             {
               previous_commit_id: '295af90dfbb5d694bd5b91ecc6e3eca1b5ad2258',
@@ -118,7 +118,7 @@ describe 'Application' do
         args: {
           branch: 'master',
           url: 'https://github.com/Xalgorithms/testing-rules.git',
-          what: :branch_updated,
+          what: 'branch_updated',
           changes: [
             {
               previous_commit_id: 'fbccee99d5bc373d43081fbe1ced4be90913e6f0',
@@ -136,7 +136,7 @@ describe 'Application' do
         args: {
           branch: 'master',
           url: 'https://github.com/Xalgorithms/testing-rules.git',
-          what: :branch_updated,
+          what: 'branch_updated',
           changes: [
             {
               previous_commit_id: 'cc6c383d4fa9b1fc72b5ec4b1fb078ac8d0ab5a8',
@@ -165,7 +165,7 @@ describe 'Application' do
         args: {
           branch: 'master',
           url: 'https://github.com/Xalgorithms/testing-rules.git',
-          what: :branch_updated,
+          what: 'branch_updated',
           changes: [
             {
               previous_commit_id: '4d11567bb9461e6404f3a2128022d3c5b329ac46',
