@@ -23,6 +23,12 @@
 # <http://www.gnu.org/licenses/>.
 require 'sidekiq'
 
+require_relative './add_rule'
+require_relative './add_table'
+require_relative './add_data'
+require_relative './remove_rule'
+require_relative './remove_table'
+require_relative './remove_data'
 require_relative './storage'
 
 module Jobs
@@ -38,6 +44,19 @@ module Jobs
       @default_fn = lambda do |o|
         puts "? unknown what (what=#{o.fetch('what', nil)})"
       end
+      @jobs = {
+        update: {
+          'rule'  => Jobs::AddRule,
+          'table' => Jobs::AddTable,
+          'json'  => Jobs::AddData,
+        },
+        remove: {
+          'rule'  => Jobs::RemoveRule,
+          'table' => Jobs::RemoveTable,
+          'json'  => Jobs::RemoveData,
+        },
+      }
+
     end
     
     def perform(o)
@@ -48,27 +67,40 @@ module Jobs
       false
     end
 
+    private
+
+    def invoke_jobs(ctx, items)
+      items.each do |it|
+        kl = @jobs[ctx].fetch(it[:type], nil)
+        kl.perform_async(it) if kl
+      end
+    end
+    
     def perform_branch_updated(o)
-      p [:branch_updated, o]
-      # 1. clone @sha
-      # 2. forall changes in the update, if the repo exists, spawn a
-      # related job
-      # 3. process 'removed'
+      gh = GitHub.new
+      o.fetch('changes', []).each do |ch|
+        items = gh.get_changed_files(o['url'], o['branch'], ch)
+        jobs = [:remove, :update].zip(items.partition do |it|
+                                        it[:op] == :removed
+                                      end)
+
+        jobs.each do |args|
+          invoke_jobs(*args)
+        end
+      end
     end
 
     def perform_branch_created(o)
-      # 1. clone @sha
-      # 2. forall files in the branch, if the repo exists, spawn a
-      # related job
-      p [:branch_created, o]
+      gh = GitHub.new
+      invoke_jobs(:update, gh.get(o['url'], o['branch']))
     end
 
     def perform_branch_removed(o)
-      # 1. rules in this repo, from this branch need to be removed
-      # 2. effectives with rule_ids from this branch need to be removed
-      # 3. when_keys should be decremented
-      # 4. whens should be removed
-      p [:branch_removed, o]
+      # find all rules for this url/branch
+      # schedule: RemoveEffective([rule_id])
+      # schedule: RemoveApplicable([rule_id])
+      # schedule: RemoveStoredRule([rule_id]) (mongo)
+      # find all json in this branch (via GitHub) and remove it from Mongo
     end
   end
 end
