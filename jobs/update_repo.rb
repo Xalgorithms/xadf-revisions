@@ -26,7 +26,10 @@ require 'sidekiq'
 require_relative './add_rule'
 require_relative './add_table'
 require_relative './add_data'
+require_relative './remove_applicable'
+require_relative './remove_effective'
 require_relative './remove_rule'
+require_relative './remove_stored_rules'
 require_relative './remove_table'
 require_relative './remove_data'
 require_relative './storage'
@@ -96,11 +99,11 @@ module Jobs
     end
 
     def perform_branch_removed(o)
-      # find all rules for this url/branch
-      # schedule: RemoveEffective([rule_id])
-      # schedule: RemoveApplicable([rule_id])
-      # schedule: RemoveStoredRule([rule_id]) (mongo)
-      # find all json in this branch (via GitHub) and remove it from Mongo
+      Storage.instance.tables.lookup_rules_in_repo(o['url'], o['branch']) do |rule_id|
+        RemoveEffective.perform_async(rule_id)
+        RemoveApplicable.perform_async(rule_id)
+      end
+      RemoveStoredRules.perform_async(origin: o['url'], branch: o['branch'])
     end
   end
 end

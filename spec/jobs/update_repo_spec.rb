@@ -30,6 +30,9 @@ require_relative '../../jobs/add_data'
 require_relative '../../jobs/remove_rule'
 require_relative '../../jobs/remove_table'
 require_relative '../../jobs/remove_data'
+require_relative '../../jobs/remove_effective'
+require_relative '../../jobs/remove_applicable'
+require_relative '../../jobs/remove_stored_rules'
 require_relative '../../jobs/update_repo'
 require_relative '../../jobs/storage'
 require_relative '../../lib/github'
@@ -141,6 +144,33 @@ describe Jobs::UpdateRepo do
   end
 
   it 'should purge content when a branch is removed' do
+    rand_times do
+      url = Faker::Internet.url
+      branch = Faker::Lorem.word
+      rule_ids = rand_array { Faker::Number.hexadecimal(40) }
+
+      expect(Jobs::Storage.instance.tables).to receive(:if_has_repository).with(url).and_yield
+      receive_lookup = receive(:lookup_rules_in_repo).with(url, branch)
+      rule_ids.each do |id|
+        receive_lookup = receive_lookup.and_yield(id)
+      end
+      expect(Jobs::Storage.instance.tables).to receive_lookup
+
+      rule_ids.each do |id|
+        expect(Jobs::RemoveEffective).to receive(:perform_async).with(id)
+        expect(Jobs::RemoveApplicable).to receive(:perform_async).with(id)
+      end
+
+      expect(Jobs::RemoveStoredRules).to receive(:perform_async).with(origin: url, branch: branch)
+
+      job = Jobs::UpdateRepo.new
+      job_args = rand_document.merge('url' => url, 'branch' => branch, 'what' => 'branch_removed')
+      job.perform(job_args)
+    end
+  end
+
+  it 'should do nothing when a branch is removed in a repo that is not tracked' do
+    verify_unknown('branch_removed')
   end
 
   it 'should add content when a branch is added' do
