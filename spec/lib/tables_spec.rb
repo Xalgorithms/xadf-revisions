@@ -361,4 +361,32 @@ describe Tables do
     
     check_many_queries(validate, queries)
   end
+
+  it 'should yield rule_ids matching origin, branch' do
+    tables = Tables.new
+    rule_ids = rand_array { Faker::Number.hexadecimal(40) }
+    validate = build_query_validation(tables,
+                                      OpenStruct.new(rows: rule_ids.map { |id| { 'rule_id' => id } })
+                                     )
+
+    url = Faker::Internet.url
+    branch = Faker::Lorem.word
+
+    actual_rule_ids = []
+    tables.lookup_rules_in_repo(url, branch) do |rule_id|
+      actual_rule_ids << rule_id
+    end
+
+    expect(actual_rule_ids).to eql(rule_ids)
+
+    check_first_query(validate,
+                      {
+                        tbl: 'rules',
+                        keys: ['rule_id'],
+                        conds: [
+                          { key: 'origin', value: "'#{url}'" },
+                          { key: 'branch', value: "'#{branch}'"}
+                        ]
+                      })
+  end
 end

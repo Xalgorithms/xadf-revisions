@@ -83,6 +83,13 @@ class Tables
   def unless_has_rule(rule_id, branch, &bl)
     query_rule_presence(rule_id, branch, @empty_fn, &bl).join
   end
+
+  def lookup_rules_in_repo(url, branch, &bl)
+    query_data('rules', ['rule_id'], {
+                  origin: { type: :string, value: url },
+                  branch: { type: :string, value: branch },
+                }, &bl).join
+  end
   
   private
 
@@ -116,6 +123,15 @@ class Tables
   def query_if(tbl, fn, keys=[], where={}, &bl)
     query_async(tbl, keys, where) do |rs|
       bl.call if bl && fn.call(rs)
+    end
+  end
+
+  def query_data(tbl, keys=[], where={}, &bl)
+    query_async(tbl, keys, where) do |rs|
+      rs.rows.each do |row|
+        args = keys.map { |k| row[k] }
+        bl.call(*args)
+      end
     end
   end
   
