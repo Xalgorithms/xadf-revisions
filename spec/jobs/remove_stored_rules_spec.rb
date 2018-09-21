@@ -21,22 +21,25 @@
 # You should have received a copy of the GNU Affero General Public
 # License along with this program. If not, see
 # <http://www.gnu.org/licenses/>.
-require 'sidekiq'
+require 'active_support/core_ext/hash'
+require 'faker'
 
-require_relative './storage'
+require_relative '../../jobs/remove_stored_rules'
+require_relative '../../jobs/storage'
 
-module Jobs
-  class RemoveStoredRules
-    include Sidekiq::Worker
+describe Jobs::RemoveStoredRules do
+  include Radish::Randomness
 
-    def perform(o)
-      origin = o.fetch(:origin, nil)
-      branch = o.fetch(:branch, nil)
+  it 'should trigger removals on document storage' do
+    rand_times do
+      origin = Faker::Internet.url
+      branch = Faker::Lorem.word
 
-      if origin && branch
-        Storage.instance.docs.remove_rules_by_origin_branch(origin, branch)
-        Storage.instance.docs.remove_table_data_by_origin_branch(origin, branch)
-      end
+      expect(Jobs::Storage.instance.docs).to receive(:remove_rules_by_origin_branch).with(origin, branch)
+      expect(Jobs::Storage.instance.docs).to receive(:remove_table_data_by_origin_branch).with(origin, branch)
+
+      job = Jobs::RemoveStoredRules.new
+      job.perform(origin: origin, branch: branch)
     end
   end
 end

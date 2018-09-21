@@ -74,4 +74,38 @@ describe Documents do
       docs.store_table_data(table_data)
     end
   end
+
+  it 'should remove rules by origin, branch' do
+    rand_times do
+      origin = Faker::Internet.url
+      branch = Faker::Lorem.word
+
+      conn = double('Fake: mongo connection')
+      coll = double('Fake: mongo rules collection')
+
+      expect(conn).to receive('[]').with('rules').and_return(coll)
+      expect(coll).to receive(:delete_many).with(origin: origin, branch: branch)
+
+      docs = Documents.new
+      expect(docs).to receive(:connection).and_return(conn)
+      docs.remove_rules_by_origin_branch(origin, branch)
+    end
+  end
+
+  it 'should remove table data by origin, branch' do
+    rand_times do
+      origin = Faker::Internet.url
+      branch = Faker::Lorem.word
+
+      conn = double('Fake: mongo connection')
+      coll = double('Fake: mongo rules collection')
+
+      expect(conn).to receive('[]').with('table_data').and_return(coll)
+      expect(coll).to receive(:delete_many).with(origin: origin, branch: branch)
+
+      docs = Documents.new
+      expect(docs).to receive(:connection).and_return(conn)
+      docs.remove_table_data_by_origin_branch(origin, branch)
+    end
+  end
 end

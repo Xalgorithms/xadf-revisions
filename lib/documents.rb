@@ -42,8 +42,20 @@ class Documents
   def store_table_data(data)
     connection['table_data'].insert_one(data)
   end
-  
+
+  def remove_rules_by_origin_branch(origin, branch)
+    delete_many_by_origin_branch('rules', origin, branch)
+  end
+
+  def remove_table_data_by_origin_branch(origin, branch)
+    delete_many_by_origin_branch('table_data', origin, branch)
+  end
+
   private
+
+  def delete_many_by_origin_branch(cn, origin, branch)
+    connection[cn].delete_many(origin: origin, branch: branch)
+  end
 
   def connection
     @cl ||= connect
