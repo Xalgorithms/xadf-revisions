@@ -404,6 +404,32 @@ describe Tables do
     end
   end
 
+  it 'should remove meta by origin, branch, rule_id' do
+    rand_times(10) do
+      origin = Faker::Internet.url
+      branch = Faker::Lorem.word
+      rule_id = Faker::Number.hexadecimal(40)
+
+      tables = Tables.new
+
+      validate = build_validation(tables, true)
+
+      exs = [
+        {
+          tbl: 'rules',
+          conds: {
+            'origin' => "'#{origin}'",
+            'branch' => "'#{branch}'",
+            'rule_id' => "'#{rule_id}'",
+          },
+        }
+      ]
+
+      tables.remove_meta(origin, branch, rule_id)
+      check_many(validate, exs)
+    end
+  end
+
   it 'should remove applicables by rule_id' do
     rand_times do
       rule_id = Faker::Number.hexadecimal(40)

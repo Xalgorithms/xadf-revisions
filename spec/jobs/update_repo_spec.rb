@@ -32,6 +32,7 @@ require_relative '../../jobs/remove_table'
 require_relative '../../jobs/remove_data'
 require_relative '../../jobs/remove_effective'
 require_relative '../../jobs/remove_applicable'
+require_relative '../../jobs/remove_meta'
 require_relative '../../jobs/remove_stored_rules'
 require_relative '../../jobs/update_repo'
 require_relative '../../jobs/storage'
@@ -157,6 +158,7 @@ describe Jobs::UpdateRepo do
       expect(Jobs::Storage.instance.tables).to receive_lookup
 
       rule_ids.each do |id|
+        expect(Jobs::RemoveMeta).to receive(:perform_async).with(origin: url, branch: branch, rule_id: id)
         expect(Jobs::RemoveEffective).to receive(:perform_async).with(rule_id: id)
         expect(Jobs::RemoveApplicable).to receive(:perform_async).with(rule_id: id)
       end

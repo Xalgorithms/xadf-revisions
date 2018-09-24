@@ -28,6 +28,7 @@ require_relative './add_table'
 require_relative './add_data'
 require_relative './remove_applicable'
 require_relative './remove_effective'
+require_relative './remove_meta'
 require_relative './remove_rule'
 require_relative './remove_stored_rules'
 require_relative './remove_table'
@@ -100,6 +101,7 @@ module Jobs
 
     def perform_branch_removed(o)
       Storage.instance.tables.lookup_rules_in_repo(o['url'], o['branch']) do |rule_id|
+        RemoveMeta.perform_async(origin: o['url'], branch: o['branch'], rule_id: rule_id)
         RemoveEffective.perform_async(rule_id: rule_id)
         RemoveApplicable.perform_async(rule_id: rule_id)
       end

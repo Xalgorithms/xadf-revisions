@@ -77,6 +77,12 @@ class Tables
     keys = [:ns, :name, :origin, :branch, :rule_id, :version, :runtime, :criticality]
     insert_one('rules', keys, o)
   end
+
+  def remove_meta(origin, branch, rule_id)
+    execute do
+      build_delete('rules', "origin='#{origin}' AND branch='#{branch}' AND rule_id='#{rule_id}'")
+    end
+  end
   
   def store_repository(o)
     keys = [:clone_url]
