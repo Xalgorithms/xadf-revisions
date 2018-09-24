@@ -26,12 +26,12 @@ require 'sidekiq'
 require_relative './storage'
 
 module Jobs
-  class RemoveData
+  class RemoveStoredRule
     include Sidekiq::Worker
 
     def perform(o)
-      if o.key?(:origin) && o.key?(:branch)
-        Storage.instance.docs.remove_table_data_by_origin_branch(o[:origin], o[:branch])
+      if o.key?(:rule_id)
+        Storage.instance.docs.remove_rule_by_id(o[:rule_id])
       end
     end
   end

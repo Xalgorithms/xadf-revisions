@@ -1,6 +1,9 @@
 # Copyright (C) 2018 Don Kelly <karfai@gmail.com>
 # Copyright (C) 2018 Hayk Pilosyan <hayk.pilos@gmail.com>
 
+# Copyright (C) 2018 Don Kelly <karfai@gmail.com>
+# Copyright (C) 2018 Hayk Pilosyan <hayk.pilos@gmail.com>
+
 # This file is part of Interlibr, a functional component of an
 # Internet of Rules (IoR).
 
@@ -22,14 +25,38 @@
 # License along with this program. If not, see
 # <http://www.gnu.org/licenses/>.
 require 'active_support/core_ext/hash'
-require 'sidekiq'
+require 'faker'
 
-require_relative './remove_xalgo'
+require_relative '../../jobs/remove_data'
+require_relative '../../jobs/storage'
 
-module Jobs
-  class RemoveTable < RemoveXalgo
-    def initialize
-      super('table')
+describe Jobs::RemoveRule do
+  include Radish::Randomness
+
+  it 'should trigger removal jobs' do
+    rand_times do
+      origin = Faker::Internet.url
+      branch = Faker::Lorem.word
+
+      job = Jobs::RemoveData.new
+      args = {
+        origin: origin,
+        branch: branch,
+      }
+
+      expect(Jobs::Storage.instance.docs).to receive(:remove_table_data_by_origin_branch).with(origin, branch)
+      
+      job.perform(rand_document.merge(args))
+    end
+  end
+
+  it 'should do nothing if the args are not specified' do
+    keys = [:origin, :branch]
+    rand_times do
+      expect(Jobs::Storage.instance.docs).to_not receive(:remove_table_data_by_origin_branch)
+
+      job = Jobs::RemoveData.new
+      job.perform(rand_document.merge(keys.sample(1).inject({}) { |o, k| o.merge(k => k) }))
     end
   end
 end

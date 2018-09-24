@@ -21,17 +21,38 @@
 # You should have received a copy of the GNU Affero General Public
 # License along with this program. If not, see
 # <http://www.gnu.org/licenses/>.
+require 'active_support/core_ext/hash'
+require 'radish/documents/core'
 require 'sidekiq'
+require 'xa/rules/parse/content'
 
-require_relative './storage'
+require_relative '../lib/ids'
+require_relative './remove_applicable'
+require_relative './remove_effective'
+require_relative './remove_meta'
+require_relative './remove_stored_rule'
 
 module Jobs
-  class RemoveData
+  class RemoveXalgo
+    include Ids
+    include Radish::Documents::Core
     include Sidekiq::Worker
+    include XA::Rules::Parse::Content
 
+    def initialize(doc_type)
+      @doc_type = doc_type
+    end
+    
     def perform(o)
-      if o.key?(:origin) && o.key?(:branch)
-        Storage.instance.docs.remove_table_data_by_origin_branch(o[:origin], o[:branch])
+      req_keys = [:origin, :branch, :ns, :name]
+      if req_keys.select { |k| !o.key?(k) }.empty?
+        parsed = send("parse_#{@doc_type}", o[:data])
+        id = { 'ns' => o[:ns], 'name' => o[:name], 'version' => get(parsed, 'meta.version', nil) }
+        rule_id = make_id(@doc_type, id)
+        RemoveMeta.perform_async(origin: o[:origin], branch: o[:branch], rule_id: rule_id)
+        RemoveEffective.perform_async(rule_id: rule_id)
+        RemoveApplicable.perform_async(rule_id: rule_id)
+        RemoveStoredRule.perform_async(rule_id: rule_id)
       end
     end
   end

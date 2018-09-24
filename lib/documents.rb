@@ -47,6 +47,10 @@ class Documents
     delete_many_by_origin_branch('rules', origin, branch)
   end
 
+  def remove_rule_by_id(rule_id)
+    connection['rules'].delete_many(public_id: rule_id)
+  end
+
   def remove_table_data_by_origin_branch(origin, branch)
     delete_many_by_origin_branch('table_data', origin, branch)
   end

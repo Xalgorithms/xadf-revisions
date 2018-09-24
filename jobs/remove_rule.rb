@@ -21,13 +21,15 @@
 # You should have received a copy of the GNU Affero General Public
 # License along with this program. If not, see
 # <http://www.gnu.org/licenses/>.
+require 'active_support/core_ext/hash'
 require 'sidekiq'
 
-module Jobs
-  class RemoveRule
-    include Sidekiq::Worker
+require_relative './remove_xalgo'
 
-    def perform(o)
+module Jobs
+  class RemoveRule < RemoveXalgo
+    def initialize
+      super('rule')
     end
   end
 end

@@ -108,4 +108,20 @@ describe Documents do
       docs.remove_table_data_by_origin_branch(origin, branch)
     end
   end
+
+  it 'should remove a rule by rule_id' do
+    rand_times do
+      rule_id = Faker::Number.hexadecimal(40)
+
+      conn = double('Fake: mongo connection')
+      coll = double('Fake: mongo rules collection')
+
+      expect(conn).to receive('[]').with('rules').and_return(coll)
+      expect(coll).to receive(:delete_many).with(public_id: rule_id)
+
+      docs = Documents.new
+      expect(docs).to receive(:connection).and_return(conn)
+      docs.remove_rule_by_id(rule_id)      
+    end
+  end
 end
