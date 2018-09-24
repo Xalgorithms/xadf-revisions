@@ -21,16 +21,32 @@
 # You should have received a copy of the GNU Affero General Public
 # License along with this program. If not, see
 # <http://www.gnu.org/licenses/>.
-require 'sidekiq'
+require 'active_support/core_ext/hash'
+require 'faker'
 
-require_relative './storage'
+require_relative '../../jobs/remove_effective'
+require_relative '../../jobs/storage'
 
-module Jobs
-  class RemoveEffective
-    include Sidekiq::Worker
+describe Jobs::RemoveEffective do
+  include Radish::Randomness
 
-    def perform(o)
-      Storage.instance.tables.remove_effective(o[:rule_id]) if o.key?(:rule_id)
+  it 'should trigger removals on document storage' do
+    rand_times do
+      rule_id = Faker::Number.hexadecimal(40)
+
+      expect(Jobs::Storage.instance.tables).to receive(:remove_effective).with(rule_id)
+
+      job = Jobs::RemoveEffective.new
+      job.perform(rand_document.merge(rule_id: rule_id))
+    end
+  end
+
+  it 'should do nothing if the rule_id is not specified' do
+    rand_times do
+      expect(Jobs::Storage.instance.tables).to_not receive(:remove_effective)
+
+      job = Jobs::RemoveEffective.new
+      job.perform(rand_document)
     end
   end
 end

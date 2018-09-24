@@ -23,11 +23,14 @@
 # <http://www.gnu.org/licenses/>.
 require 'sidekiq'
 
+require_relative './storage'
+
 module Jobs
   class RemoveApplicable
     include Sidekiq::Worker
 
     def perform(o)
+      Storage.instance.tables.remove_applicable(o[:rule_id]) if o.key?(:rule_id)
     end
   end
 end

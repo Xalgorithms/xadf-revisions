@@ -157,8 +157,8 @@ describe Jobs::UpdateRepo do
       expect(Jobs::Storage.instance.tables).to receive_lookup
 
       rule_ids.each do |id|
-        expect(Jobs::RemoveEffective).to receive(:perform_async).with(id)
-        expect(Jobs::RemoveApplicable).to receive(:perform_async).with(id)
+        expect(Jobs::RemoveEffective).to receive(:perform_async).with(rule_id: id)
+        expect(Jobs::RemoveApplicable).to receive(:perform_async).with(rule_id: id)
       end
 
       expect(Jobs::RemoveStoredRules).to receive(:perform_async).with(origin: url, branch: branch)

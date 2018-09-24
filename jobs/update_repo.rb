@@ -100,8 +100,8 @@ module Jobs
 
     def perform_branch_removed(o)
       Storage.instance.tables.lookup_rules_in_repo(o['url'], o['branch']) do |rule_id|
-        RemoveEffective.perform_async(rule_id)
-        RemoveApplicable.perform_async(rule_id)
+        RemoveEffective.perform_async(rule_id: rule_id)
+        RemoveApplicable.perform_async(rule_id: rule_id)
       end
       RemoveStoredRules.perform_async(origin: o['url'], branch: o['branch'])
     end
