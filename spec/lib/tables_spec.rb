@@ -403,4 +403,45 @@ describe Tables do
       check_first(validate, tbl: 'effective', conds: { 'rule_id' => "'#{rule_id}'" })
     end
   end
+
+  it 'should remove applicables by rule_id' do
+    rand_times do
+      rule_id = Faker::Number.hexadecimal(40)
+      tables = Tables.new
+
+      results = rand_array do
+        { 'section' => Faker::Lorem.word, 'key' => Faker::Lorem.word }
+      end
+      
+      validate = build_validation(tables, true, OpenStruct.new(rows: results))
+
+      tables.remove_applicable(rule_id)
+
+      exs = [
+        {
+          tbl: 'whens',
+          keys: ['section', 'key'],
+          conds: [
+            { key: 'rule_id', value: "'#{rule_id}'" },
+          ],
+        }
+      ] + results.map do |res|
+        {
+          op: :update,
+          tbl: 'when_keys',
+          updates: [{key: 'refs', val: 'refs-1'}],
+          wheres: [
+            { key: 'section', val: "'#{res['section']}'" },
+            { key: 'key',     val: "'#{res['key']}'" },
+          ]
+        }
+      end + [
+        {
+          tbl: 'whens',
+          conds: { 'rule_id' => "'#{rule_id}'" }
+        }
+      ]
+      check_many(validate, exs)
+    end
+  end
 end

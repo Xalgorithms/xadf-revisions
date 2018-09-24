@@ -51,6 +51,18 @@ class Tables
     end
   end
 
+  def remove_applicable(rule_id)
+    query_data('whens', ['section', 'key'], {
+                  rule_id: { type: :string, value: rule_id },
+               }) do |section, key|
+
+      execute_when_keys_updates([{ section: section, key: key}], '-1')
+    end.join
+    execute do
+      build_delete('whens', "rule_id='#{rule_id}'")
+    end
+  end
+
   def store_effectives(effs)
     keys = [:country, :region, :timezone, :starts, :ends, :key, :rule_id]
     within_batch do
