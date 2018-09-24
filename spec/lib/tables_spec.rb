@@ -121,33 +121,30 @@ describe Tables do
     end
   end
   
-  def build_prepare_validation(tables)
+  def build_validation(tables, will_execute=true, results=nil)
     validate = Validation.new
     session = double('Fake: Cassandra session')
     stm = double('Fake: Cassandra statement')
-    
-    expect(tables).to receive(:session).at_least(:once).and_return(session)
-    expect(session).to receive(:prepare).at_least(:once) do |q|
-      validate.capture(q)
-      stm
-    end
-    expect(session).to receive(:execute).at_least(:once).with(stm)
-
-    validate
-  end
-
-  def build_query_validation(tables, results)
-    validate = Validation.new
-    session = double('Fake: Cassandra session')
     fut = double('Fake: future')
     
     expect(tables).to receive(:session).at_least(:once).and_return(session)
-    expect(session).to receive(:execute_async).at_least(:once) do |q|
-      validate.capture(q)
-      fut
+
+    if will_execute
+      expect(session).to receive(:prepare).at_least(:once) do |q|
+        validate.capture(q)
+        stm
+      end
+      expect(session).to receive(:execute).at_least(:once).with(stm)
     end
-    expect(fut).to receive(:on_success).at_least(:once).and_yield(results)
-    expect(fut).to receive(:join).at_least(:once)
+
+    if results
+      expect(session).to receive(:execute_async).at_least(:once) do |q|
+        validate.capture(q)
+        fut
+      end
+      expect(fut).to receive(:on_success).at_least(:once).and_yield(results)
+      expect(fut).to receive(:join).at_least(:once)
+    end
 
     validate
   end
@@ -155,7 +152,11 @@ describe Tables do
   def check_one(ac, ex)
     expect(ac.keys.sort).to eql(ex.keys.sort)
     ac.each do |k, v|
-      expect(v).to eql(ex[k])
+      if v.class == Array
+        expect(v).to match_array(ex[k])
+      else
+        expect(v).to eql(ex[k])
+      end
     end
   end
   
@@ -177,7 +178,7 @@ describe Tables do
 
     rand_document_collection(keys).each do |o|
       tables = Tables.new
-      validate = build_prepare_validation(tables)
+      validate = build_validation(tables)
       tables.store_repository(o)
       check_first(validate, build_insert_expect_from_doc('repositories', o))
     end
@@ -188,7 +189,7 @@ describe Tables do
 
     rand_document_collection(keys).each do |meta|
       tables = Tables.new
-      validate = build_prepare_validation(tables)
+      validate = build_validation(tables)
       tables.store_meta(meta)
       check_first(validate, build_insert_expect_from_doc('rules', meta))
     end
@@ -202,7 +203,7 @@ describe Tables do
       rand_document_collection(all_keys)
     end.each do |apps|
       tables = Tables.new
-      validate = build_prepare_validation(tables)
+      validate = build_validation(tables)
       tables.store_applicables(apps)
       
       exes = apps.map do |app|
@@ -229,7 +230,7 @@ describe Tables do
       rand_document_collection(keys)
     end.each do |effs|
       tables = Tables.new
-      validate = build_prepare_validation(tables)
+      validate = build_validation(tables)
       tables.store_effectives(effs)
       
       exes = effs.map do |eff|
@@ -242,7 +243,7 @@ describe Tables do
 
   it 'should call back if a repository exists' do
     tables = Tables.new
-    validate = build_query_validation(tables, [rand_document])
+    validate = build_validation(tables, false, [rand_document])
     url = Faker::Internet.url
 
     yielded = false
@@ -263,7 +264,7 @@ describe Tables do
 
   it 'should not call back if a repository does not exist' do
     tables = Tables.new
-    validate = build_query_validation(tables, [])
+    validate = build_validation(tables, false, [])
     url = Faker::Internet.url
 
     yielded = false
@@ -284,7 +285,7 @@ describe Tables do
 
   it 'should call back if a rule exists' do
     tables = Tables.new
-    validate = build_query_validation(tables, [Faker::Number.hexadecimal(40).to_s])
+    validate = build_validation(tables, false, [Faker::Number.hexadecimal(40).to_s])
 
     types = ['rule', 'table']
     exes = rand_array do
@@ -324,7 +325,7 @@ describe Tables do
 
   it 'should not call back if a rule does not exist' do
     tables = Tables.new
-    validate = build_query_validation(tables, [])
+    validate = build_validation(tables, false, [])
 
     types = ['rule', 'table']
     exes = rand_array do
@@ -365,9 +366,9 @@ describe Tables do
   it 'should yield rule_ids matching origin, branch' do
     tables = Tables.new
     rule_ids = rand_array { Faker::Number.hexadecimal(40) }
-    validate = build_query_validation(tables,
-                                      OpenStruct.new(rows: rule_ids.map { |id| { 'rule_id' => id } })
-                                     )
+    validate = build_validation(tables, false,
+                                OpenStruct.new(rows: rule_ids.map { |id| { 'rule_id' => id } })
+                               )
 
     url = Faker::Internet.url
     branch = Faker::Lorem.word
@@ -395,7 +396,7 @@ describe Tables do
       rule_id = Faker::Number.hexadecimal(40)
       tables = Tables.new
 
-      validate = build_prepare_validation(tables)
+      validate = build_validation(tables)
 
       tables.remove_effective(rule_id)
 
