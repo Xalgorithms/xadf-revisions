@@ -25,12 +25,9 @@ require 'active_support/core_ext/hash'
 require 'active_support/core_ext/string'
 require 'cassandra'
 
-require_relative './ids'
 require_relative './local_env'
 
 class Tables
-  include Ids
-  
   def initialize
     @env = LocalEnv.new(
       'CASSANDRA', {
