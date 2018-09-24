@@ -38,25 +38,53 @@ describe Tables do
     end
   end
 
-  class InsertValidation
+  class Validation
     attr_reader :queries
-    
+
     def initialize
       @queries = []
+      @captures = [
+        {
+          regex: /INSERT INTO interlibr\.(.+) \((.+)\) VALUES \((.+)\)/,
+          extract_fn: method(:extract_insert),
+        },
+        {
+          regex: /UPDATE interlibr\.(.+) SET (.+\=.+) WHERE (.+)/,
+          extract_fn: method(:extract_update),
+        },
+        {
+          regex: /SELECT (.+) FROM interlibr\.([a-z]+)(?: WHERE ([^\;]+))?/,
+          extract_fn: method(:extract_select),
+        },
+        {
+          regex: /DELETE FROM interlibr.(.+) WHERE (.+)/,
+          extract_fn: method(:extract_delete),
+        },
+      ]
     end
 
-    def maybe_capture_insert(q)
-      m = /INSERT INTO interlibr\.(.+) \((.+)\) VALUES \((.+)\)/.match(q)
+    def capture(q)
+      q.split(';').each do |sub_q|
+        exs = @captures.map do |cap|
+          m = cap[:regex].match(sub_q)
+          m ? cap[:extract_fn].call(m) : nil
+        end.compact
+        if exs.any?
+          @queries << exs.first
+        end
+      end
+    end
+
+    def extract_insert(m)
       {
         tbl: m[1],
         keys: m[2].split(',').sort,
         vals: m[3].split(',').map { |s| s[1..-2] }.sort,
         op: :insert,
-      } if m
+      }
     end
 
-    def maybe_capture_update(q)
-      m = /UPDATE interlibr\.(.+) SET (.+\=.+) WHERE (.+)/.match(q)
+    def extract_update(m)
       {
         tbl: m[1],
         updates: m[2].split(/,\s*/).map do |s|
@@ -68,64 +96,33 @@ describe Tables do
           { key: k, val: v }
         end,
         op: :update
-      } if m
-    end
-    
-    def capture(q)
-      q.split(';').each do |sub_q|
-        cap = maybe_capture_insert(sub_q)
-        cap = maybe_capture_update(sub_q) if !cap
-        @queries << cap if cap
-      end
-    end
-  end
-
-
-  class QueryValidation
-    attr_reader :queries
-    
-    def initialize
-      @queries = []
-    end
-    
-    def capture(q)
-      m = /SELECT (.+) FROM interlibr\.([a-z]+)(?: WHERE ([^\;]+))?/.match(q)
-      if m
-        @queries << {
-          tbl: m[2],
-          keys: m[1].split(',').sort,
-          conds: m[3].split(' AND ').map do |c|
-            (k, v) = c.split('=')
-            { key: k, value: v }
-          end
-        }
-      end
-    end
-  end
-
-  class DeleteValidation
-    attr_reader :queries
-
-    def initialize()
-      @queries = []
+      }
     end
 
-    def capture(q)
-      m = /DELETE FROM interlibr.(.+) WHERE (.+)/.match(q)
-      if m
-        @queries << {
-          tbl: m[1],
-          conds: m[2].split(' AND ').inject({}) do |o, cond|
-            (k, v) = cond.split('=')
-            o.merge(k => v)
-          end
-        }
-      end
+    def extract_select(m)
+      {
+        tbl: m[2],
+        keys: m[1].split(',').sort,
+        conds: m[3].split(' AND ').map do |c|
+          (k, v) = c.split('=')
+          { key: k, value: v }
+        end
+      }
+    end
+
+    def extract_delete(m)
+      {
+        tbl: m[1],
+        conds: m[2].split(' AND ').inject({}) do |o, cond|
+          (k, v) = cond.split('=')
+          o.merge(k => v)
+        end
+      }
     end
   end
   
-  def build_insert_validation(tables)
-    validate = InsertValidation.new
+  def build_prepare_validation(tables)
+    validate = Validation.new
     session = double('Fake: Cassandra session')
     stm = double('Fake: Cassandra statement')
     
@@ -140,7 +137,7 @@ describe Tables do
   end
 
   def build_query_validation(tables, results)
-    validate = QueryValidation.new
+    validate = Validation.new
     session = double('Fake: Cassandra session')
     fut = double('Fake: future')
     
@@ -155,64 +152,22 @@ describe Tables do
     validate
   end
 
-  def build_delete_validation(tables)
-    validate = DeleteValidation.new
-    session = double('Fake: Cassandra session')
-    stm = double('Fake: Cassandra statement')
-    
-    expect(tables).to receive(:session).at_least(:once).and_return(session)
-    expect(session).to receive(:prepare).at_least(:once) do |q|
-      validate.capture(q)
-      stm
-    end
-    expect(session).to receive(:execute).at_least(:once).with(stm)
-
-    validate
-  end
-
-  def check_one_insert(ac, ex)
-    expect(ac[:tbl]).to eql(ex[:tbl])
-    expect(ac[:keys]).to eql(ex[:keys])
-    expect(ac[:vals]).to eql(ex[:vals])
-  end
-  
-  def check_first_insert(validate, ex)
-    check_one_insert(validate.queries.first, ex)
-  end
-
-  def check_many_inserts(validate, exes)
-    expect(validate.queries.size).to eql(exes.size)
-    exes.each_with_index do |ex, i|
-      check_one_insert(validate.queries[i], ex)
+  def check_one(ac, ex)
+    expect(ac.keys.sort).to eql(ex.keys.sort)
+    ac.each do |k, v|
+      expect(v).to eql(ex[k])
     end
   end
-
-  def check_one_query(ac, ex)
-    expect(ac[:tbl]).to eql(ex[:tbl])
-    expect(ac[:keys]).to eql(ex[:keys])
-    expect(ac[:conds]).to eql(ex[:conds])
+  
+  def check_many(validate, exs)
+    expect(validate.queries.length).to eql(exs.length)
+    validate.queries.each_with_index { |ac, i| check_one(ac, exs[i]) }
   end
   
-  def check_first_query(validate, ex)
-    check_one_query(validate.queries.first, ex)
-  end
-
-  def check_many_queries(validate, exes)
-    expect(validate.queries.size).to eql(exes.size)
-    exes.each_with_index do |ex, i|
-      check_one_query(validate.queries[i], ex)
-    end
-  end
-
-  def check_one_delete(ac, ex)
-    expect(ac[:tbl]).to eql(ex[:tbl])
-    expect(ac[:conds]).to eql(ex[:conds])
+  def check_first(validate, ex)
+    check_one(validate.queries.first, ex)
   end
   
-  def check_first_delete(validate, ex)
-    check_one_delete(validate.queries.first, ex)
-  end
-
   def build_insert_expect_from_doc(tbl, doc)
     { tbl: tbl, keys: doc.keys.map(&:to_s).sort, vals: doc.values.sort, op: :insert }
   end
@@ -222,9 +177,9 @@ describe Tables do
 
     rand_document_collection(keys).each do |o|
       tables = Tables.new
-      validate = build_insert_validation(tables)
+      validate = build_prepare_validation(tables)
       tables.store_repository(o)
-      check_first_insert(validate, build_insert_expect_from_doc('repositories', o))
+      check_first(validate, build_insert_expect_from_doc('repositories', o))
     end
   end
   
@@ -233,9 +188,9 @@ describe Tables do
 
     rand_document_collection(keys).each do |meta|
       tables = Tables.new
-      validate = build_insert_validation(tables)
+      validate = build_prepare_validation(tables)
       tables.store_meta(meta)
-      check_first_insert(validate, build_insert_expect_from_doc('rules', meta))
+      check_first(validate, build_insert_expect_from_doc('rules', meta))
     end
   end
 
@@ -247,14 +202,14 @@ describe Tables do
       rand_document_collection(all_keys)
     end.each do |apps|
       tables = Tables.new
-      validate = build_insert_validation(tables)
+      validate = build_prepare_validation(tables)
       tables.store_applicables(apps)
       
       exes = apps.map do |app|
         {
           op: :update,
           tbl: 'when_keys',
-          updates: [{key: 'refs', val: 'refs + 1'}],
+          updates: [{key: 'refs', val: 'refs+1'}],
           wheres: [
             { key: 'section', val: "'#{app[:section]}'" },
             { key: 'key',     val: "'#{app[:key]}'" },
@@ -264,7 +219,7 @@ describe Tables do
         build_insert_expect_from_doc('whens', app)
       end
 
-      check_many_inserts(validate, exes)
+      check_many(validate, exes)
     end
   end
 
@@ -274,14 +229,14 @@ describe Tables do
       rand_document_collection(keys)
     end.each do |effs|
       tables = Tables.new
-      validate = build_insert_validation(tables)
+      validate = build_prepare_validation(tables)
       tables.store_effectives(effs)
       
       exes = effs.map do |eff|
         build_insert_expect_from_doc('effective', eff)
       end
 
-      check_many_inserts(validate, exes)
+      check_many(validate, exes)
     end
   end
 
@@ -303,7 +258,7 @@ describe Tables do
         { key: 'clone_url', value: "'#{url}'" },
       ],
     }
-    check_first_query(validate, ex)
+    check_first(validate, ex)
   end
 
   it 'should not call back if a repository does not exist' do
@@ -324,7 +279,7 @@ describe Tables do
         { key: 'clone_url', value: "'#{url}'" },
       ],
     }
-    check_first_query(validate, ex)
+    check_first(validate, ex)
   end
 
   it 'should call back if a rule exists' do
@@ -364,7 +319,7 @@ describe Tables do
       }
     end
     
-    check_many_queries(validate, queries)
+    check_many(validate, queries)
   end
 
   it 'should not call back if a rule does not exist' do
@@ -404,7 +359,7 @@ describe Tables do
       }
     end
     
-    check_many_queries(validate, queries)
+    check_many(validate, queries)
   end
 
   it 'should yield rule_ids matching origin, branch' do
@@ -424,15 +379,15 @@ describe Tables do
 
     expect(actual_rule_ids).to eql(rule_ids)
 
-    check_first_query(validate,
-                      {
-                        tbl: 'rules',
-                        keys: ['rule_id'],
-                        conds: [
-                          { key: 'origin', value: "'#{url}'" },
-                          { key: 'branch', value: "'#{branch}'"}
-                        ]
-                      })
+    check_first(validate,
+                {
+                  tbl: 'rules',
+                  keys: ['rule_id'],
+                  conds: [
+                    { key: 'origin', value: "'#{url}'" },
+                    { key: 'branch', value: "'#{branch}'"}
+                  ]
+                })
   end
 
   it 'should remove effectives by rule_id' do
@@ -440,11 +395,11 @@ describe Tables do
       rule_id = Faker::Number.hexadecimal(40)
       tables = Tables.new
 
-      validate = build_delete_validation(tables)
+      validate = build_prepare_validation(tables)
 
       tables.remove_effective(rule_id)
 
-      check_first_delete(validate, tbl: 'effective', conds: { 'rule_id' => "'#{rule_id}'" })
+      check_first(validate, tbl: 'effective', conds: { 'rule_id' => "'#{rule_id}'" })
     end
   end
 end
