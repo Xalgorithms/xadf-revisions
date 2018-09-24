@@ -37,19 +37,15 @@ get "/status" do
 end
 
 post '/actions' do
-  o = JSON.parse(request.body.read)
-  Services::Actions.instance.execute(o)
-  json(status: 'ok')
+  begin
+    o = JSON.parse(request.body.read)
+    Services::Actions.instance.execute(o)
+    json(status: 'ok')
+  rescue JSON::ParserError => e
+    status(500)
+    json(status: 'failed_parse', reason: 'The supplied body was not valid JSON')
+  end
 end
-
-# post '/repositories' do
-#   o = JSON.parse(request.body.read)
-#   res = github.get(o['url']) do |packages|
-#     documents.store_packages(o['url'], packages)
-#   end
-
-#   json(res.merge(status: 'ok'))
-# end
 
 # ['rules', 'tables', 'packages'].each do |n|
 #   get "/#{n}" do

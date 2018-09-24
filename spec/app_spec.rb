@@ -58,6 +58,15 @@ describe 'Application' do
     expect(last_response_json).to eql('status' => 'ok')    
   end
 
+  it 'should fail nicely when the data is not JSON' do
+    expect(Services::Actions).to_not receive(:instance)
+
+    post('/actions', Faker::Lorem.paragraph)
+
+    expect(last_response).to_not be_ok
+    expect(last_response.status).to eql(500)
+  end
+
   it 'should accept POST of /events when the github event is push' do
     exes = [
       {
@@ -222,6 +231,7 @@ describe 'Application' do
 
       expect(last_response).to_not be_ok
       expect(last_response.status).to eql(403)
+      # can't test body in test (sintra wipes it out)
     end
   end
 
