@@ -50,7 +50,7 @@ class Tables
       end
     end
   end
-  
+
   def store_effectives(effs)
     keys = [:country, :region, :timezone, :starts, :ends, :key, :rule_id]
     within_batch do
@@ -58,6 +58,12 @@ class Tables
     end if effs.any?
   end
 
+  def remove_effective(rule_id)
+    execute do
+      build_delete('effective', "rule_id='#{rule_id}'")
+    end
+  end
+  
   def store_meta(o)
     keys = [:ns, :name, :origin, :branch, :rule_id, :version, :runtime, :criticality]
     insert_one('rules', keys, o)
@@ -140,6 +146,11 @@ class Tables
     avail_ks = ks.select { |k| o.key?(k) && o[k] }
     vals = avail_ks.map { |k| "'#{o[k]}'" }
     avail_ks.empty? ? '' : "INSERT INTO #{keyspace}.#{tn} (#{avail_ks.join(',')}) VALUES (#{vals.join(',')})"
+  end
+
+  def build_delete(tbl, cond)
+    keyspace = @env.get(:keyspace)
+    "DELETE FROM #{keyspace}.#{tbl} WHERE #{cond}"
   end
 
   def make_value(v)

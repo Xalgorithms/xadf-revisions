@@ -102,6 +102,27 @@ describe Tables do
       end
     end
   end
+
+  class DeleteValidation
+    attr_reader :queries
+
+    def initialize()
+      @queries = []
+    end
+
+    def capture(q)
+      m = /DELETE FROM interlibr.(.+) WHERE (.+)/.match(q)
+      if m
+        @queries << {
+          tbl: m[1],
+          conds: m[2].split(' AND ').inject({}) do |o, cond|
+            (k, v) = cond.split('=')
+            o.merge(k => v)
+          end
+        }
+      end
+    end
+  end
   
   def build_insert_validation(tables)
     validate = InsertValidation.new
@@ -130,6 +151,21 @@ describe Tables do
     end
     expect(fut).to receive(:on_success).at_least(:once).and_yield(results)
     expect(fut).to receive(:join).at_least(:once)
+
+    validate
+  end
+
+  def build_delete_validation(tables)
+    validate = DeleteValidation.new
+    session = double('Fake: Cassandra session')
+    stm = double('Fake: Cassandra statement')
+    
+    expect(tables).to receive(:session).at_least(:once).and_return(session)
+    expect(session).to receive(:prepare).at_least(:once) do |q|
+      validate.capture(q)
+      stm
+    end
+    expect(session).to receive(:execute).at_least(:once).with(stm)
 
     validate
   end
@@ -166,6 +202,15 @@ describe Tables do
     exes.each_with_index do |ex, i|
       check_one_query(validate.queries[i], ex)
     end
+  end
+
+  def check_one_delete(ac, ex)
+    expect(ac[:tbl]).to eql(ex[:tbl])
+    expect(ac[:conds]).to eql(ex[:conds])
+  end
+  
+  def check_first_delete(validate, ex)
+    check_one_delete(validate.queries.first, ex)
   end
 
   def build_insert_expect_from_doc(tbl, doc)
@@ -388,5 +433,18 @@ describe Tables do
                           { key: 'branch', value: "'#{branch}'"}
                         ]
                       })
+  end
+
+  it 'should remove effectives by rule_id' do
+    rand_times do
+      rule_id = Faker::Number.hexadecimal(40)
+      tables = Tables.new
+
+      validate = build_delete_validation(tables)
+
+      tables.remove_effective(rule_id)
+
+      check_first_delete(validate, tbl: 'effective', conds: { 'rule_id' => "'#{rule_id}'" })
+    end
   end
 end
