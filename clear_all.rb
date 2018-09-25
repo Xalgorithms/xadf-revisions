@@ -23,7 +23,7 @@
 # <http://www.gnu.org/licenses/>.
 require 'mongo'
 
-cl = Mongo::Client.new('mongodb://127.0.0.1:27017/xadf')
-['meta', 'rules', 'tables', 'packages'].each do |cn|
+cl = Mongo::Client.new('mongodb://127.0.0.1:27017/interlibr')
+['rules', 'table_data'].each do |cn|
   cl[cn].delete_many({})
 end
