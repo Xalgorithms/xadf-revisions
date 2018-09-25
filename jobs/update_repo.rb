@@ -95,6 +95,7 @@ module Jobs
     end
 
     def perform_branch_created(o)
+      puts "# branch created (url=#{o['url']}; branch=#{o['branch']})"
       gh = GitHub.new
       invoke_jobs(:update, gh.get(o['url'], o['branch']))
     end

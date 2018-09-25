@@ -26,15 +26,17 @@ require 'rugged'
 
 class GitHub
   def get(url, branch=nil)
+    puts "# getting from github (url=#{url}; branch=#{branch})"
     with_repo(url) do |repo|
-      branch_names = branch ? [branch] : ['master', 'production']
+      branch_names = branch ? [branch] : ['origin/master', 'origin/production']
+      puts "# enumerating branches (branches=#{branch_names})"
       rv = enumerate_namespaces_by_branches(repo, branch_names).inject([]) do |a, ns|
         props = { origin: url, branch: ns[:branch].name, ns: ns[:name] }
         a + ns[:tree].map do |ref|
           props.merge(populate_file_content(repo, ref))
         end
       end
-      
+
       rv.any? ? rv : nil
     end
   end

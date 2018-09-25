@@ -106,7 +106,7 @@ describe GitHub do
   end
   
   it 'should yield nothing if branches do not exist' do
-    repo = build_fake_repo_with_branches(master: nil, production: nil)
+    repo = build_fake_repo_with_branches("origin/master" => nil, "origin/production" => nil)
 
     gh = GitHub.new
     ac = gh.get(repo[:url])
@@ -152,7 +152,7 @@ describe GitHub do
       },
     }
 
-    { master: master_contents, production: prod_contents }    
+    { "origin/master" => master_contents, "origin/production" => prod_contents }    
   end
 
   def build_expects_from_contents(contents, repo_url)
@@ -191,7 +191,7 @@ describe GitHub do
     contents = build_contents
     
     repo = build_fake_repo_with_branches(contents, 2)
-    [:master, :production].each do |branch_name|
+    contents.keys.each do |branch_name|
       ex = build_expects_from_contents(contents.slice(branch_name), repo[:url])
 
       expect(FileUtils).to receive(:rm_rf).with(repo[:path])

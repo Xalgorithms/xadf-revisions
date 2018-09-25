@@ -69,7 +69,8 @@ end
 # end
 
 def determine_branch(gho)
-  gho.fetch('ref', '').split('/').last
+  n = gho.fetch('ref', '').split('/').last
+  "origin/#{n}"
 end
 
 def determine_url(gho)

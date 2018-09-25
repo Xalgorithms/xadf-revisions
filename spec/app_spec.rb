@@ -72,7 +72,7 @@ describe 'Application' do
       {
         fn: 'branch.created',
         args: {
-          branch: 'production',
+          branch: 'origin/production',
           url: 'https://github.com/Xalgorithms/testing-rules.git',
           what: 'branch_created',
         },
@@ -80,7 +80,7 @@ describe 'Application' do
       {
         fn: 'branch.deleted',
         args: {
-          branch: 'production',
+          branch: 'origin/production',
           url: 'https://github.com/Xalgorithms/testing-rules.git',
           what: 'branch_removed',
         },
@@ -88,7 +88,7 @@ describe 'Application' do
       {
         fn: 'existing.files.updated',
         args: {
-          branch: 'master',
+          branch: 'origin/master',
           url: 'https://github.com/Xalgorithms/testing-rules.git',
           what: 'branch_updated',
           changes: [
@@ -107,7 +107,7 @@ describe 'Application' do
       {
         fn: 'file.added',
         args: {
-          branch: 'master',
+          branch: 'origin/master',
           url: 'https://github.com/Xalgorithms/testing-rules.git',
           what: 'branch_updated',
           changes: [
@@ -125,7 +125,7 @@ describe 'Application' do
       {
         fn: 'file.deleted',
         args: {
-          branch: 'master',
+          branch: 'origin/master',
           url: 'https://github.com/Xalgorithms/testing-rules.git',
           what: 'branch_updated',
           changes: [
@@ -143,7 +143,7 @@ describe 'Application' do
       {
         fn: 'multiple.commits',
         args: {
-          branch: 'master',
+          branch: 'origin/master',
           url: 'https://github.com/Xalgorithms/testing-rules.git',
           what: 'branch_updated',
           changes: [
@@ -172,7 +172,7 @@ describe 'Application' do
       {
         fn: 'package.added',
         args: {
-          branch: 'master',
+          branch: 'origin/master',
           url: 'https://github.com/Xalgorithms/testing-rules.git',
           what: 'branch_updated',
           changes: [
