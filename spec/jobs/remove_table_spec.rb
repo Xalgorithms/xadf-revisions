@@ -57,11 +57,11 @@ describe Jobs::RemoveTable do
 
       job = Jobs::RemoveTable.new
       args = {
-        origin: origin,
-        branch: branch,
-        ns: ns,
-        name: name,
-        data: data,
+        'origin' => origin,
+        'branch' => branch,
+        'ns'     => ns,
+        'name'   => name,
+        'data'   => data,
       }
 
       parsed = { 'meta' => { 'version' => version } }

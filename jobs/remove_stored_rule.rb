@@ -30,8 +30,9 @@ module Jobs
     include Sidekiq::Worker
 
     def perform(o)
-      if o.key?(:rule_id)
-        Storage.instance.docs.remove_rule_by_id(o[:rule_id])
+      rule_id = o.fetch('rule_id', nil)
+      if rule_id
+        Storage.instance.docs.remove_rule_by_id(rule_id)
       end
     end
   end

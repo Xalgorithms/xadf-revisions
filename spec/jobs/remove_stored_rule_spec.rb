@@ -37,7 +37,7 @@ describe Jobs::RemoveStoredRule do
       expect(Jobs::Storage.instance.docs).to receive(:remove_rule_by_id).with(rule_id)
 
       job = Jobs::RemoveStoredRule.new
-      job.perform(rand_document.merge(rule_id: rule_id))
+      job.perform(rand_document.merge('rule_id' => rule_id))
     end
   end
 

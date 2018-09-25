@@ -57,11 +57,11 @@ describe Jobs::RemoveRule do
 
       job = Jobs::RemoveRule.new
       args = {
-        origin: origin,
-        branch: branch,
-        ns: ns,
-        name: name,
-        data: data,
+        'origin' => origin,
+        'branch' => branch,
+        'ns'     => ns,
+        'name'   => name,
+        'data'   => data,
       }
 
       parsed = { 'meta' => { 'version' => version } }

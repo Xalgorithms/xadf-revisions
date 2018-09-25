@@ -30,8 +30,10 @@ module Jobs
     include Sidekiq::Worker
 
     def perform(o)
-      if o.key?(:origin) && o.key?(:branch)
-        Storage.instance.docs.remove_table_data_by_origin_branch(o[:origin], o[:branch])
+      ks = ['origin', 'branch']
+      (origin, branch) = ks.map { |k| o.fetch(k, nil) }
+      if origin && branch
+        Storage.instance.docs.remove_table_data_by_origin_branch(origin, branch)
       end
     end
   end

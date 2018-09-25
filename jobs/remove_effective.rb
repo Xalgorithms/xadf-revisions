@@ -30,7 +30,10 @@ module Jobs
     include Sidekiq::Worker
 
     def perform(o)
-      Storage.instance.tables.remove_effective(o[:rule_id]) if o.key?(:rule_id)
+      rule_id = o.fetch('rule_id', nil)
+      if rule_id
+        Storage.instance.tables.remove_effective(rule_id)
+      end
     end
   end
 end

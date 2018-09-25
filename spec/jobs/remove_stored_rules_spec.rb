@@ -39,7 +39,7 @@ describe Jobs::RemoveStoredRules do
       expect(Jobs::Storage.instance.docs).to receive(:remove_table_data_by_origin_branch).with(origin, branch)
 
       job = Jobs::RemoveStoredRules.new
-      job.perform(origin: origin, branch: branch)
+      job.perform('origin' => origin, 'branch' => branch)
     end
   end
 end

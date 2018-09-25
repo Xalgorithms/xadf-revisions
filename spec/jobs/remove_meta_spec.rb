@@ -39,12 +39,12 @@ describe Jobs::RemoveMeta do
       expect(Jobs::Storage.instance.tables).to receive(:remove_meta).with(origin, branch, rule_id)
 
       job = Jobs::RemoveMeta.new
-      job.perform(rand_document.merge(origin: origin, branch: branch, rule_id: rule_id))
+      job.perform(rand_document.merge('origin' => origin, 'branch' => branch, 'rule_id' => rule_id))
     end
   end
 
   it 'should do nothing if the args are not specified' do
-    keys = [:origin, :branch, :rule_id]
+    keys = ['origin', 'branch', 'rule_id']
     rand_times do
       expect(Jobs::Storage.instance.tables).to_not receive(:remove_meta)
 

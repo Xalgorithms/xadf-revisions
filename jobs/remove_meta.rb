@@ -30,8 +30,12 @@ module Jobs
     include Sidekiq::Worker
 
     def perform(o)
-      args = o.slice(:origin, :branch, :rule_id).values
-      Storage.instance.tables.remove_meta(*args) if args.length == 3
+      ks = ['origin', 'branch', 'rule_id']
+      (origin, branch, rule_id) = ks.map { |k| o.fetch(k, nil) }
+
+      if origin && branch && rule_id
+        Storage.instance.tables.remove_meta(origin, branch, rule_id)
+      end
     end
   end
 end

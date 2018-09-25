@@ -37,7 +37,7 @@ describe Jobs::RemoveApplicable do
       expect(Jobs::Storage.instance.tables).to receive(:remove_applicable).with(rule_id)
 
       job = Jobs::RemoveApplicable.new
-      job.perform(rand_document.merge(rule_id: rule_id))
+      job.perform(rand_document.merge('rule_id' => rule_id))
     end
   end
 

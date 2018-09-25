@@ -30,8 +30,8 @@ module Jobs
     include Sidekiq::Worker
 
     def perform(o)
-      origin = o.fetch(:origin, nil)
-      branch = o.fetch(:branch, nil)
+      ks = ['origin', 'branch']
+      (origin, branch) = ks.map { |k| o.fetch(k, nil) }
 
       if origin && branch
         Storage.instance.docs.remove_rules_by_origin_branch(origin, branch)

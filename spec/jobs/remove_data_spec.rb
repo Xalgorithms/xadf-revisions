@@ -40,8 +40,8 @@ describe Jobs::RemoveRule do
 
       job = Jobs::RemoveData.new
       args = {
-        origin: origin,
-        branch: branch,
+        'origin' => origin,
+        'branch' => branch,
       }
 
       expect(Jobs::Storage.instance.docs).to receive(:remove_table_data_by_origin_branch).with(origin, branch)

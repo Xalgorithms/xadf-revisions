@@ -44,12 +44,13 @@ module Jobs
     end
     
     def perform(o)
-      req_keys = [:origin, :branch, :ns, :name]
-      if req_keys.select { |k| !o.key?(k) }.empty?
-        parsed = send("parse_#{@doc_type}", o[:data])
-        id = { 'ns' => o[:ns], 'name' => o[:name], 'version' => get(parsed, 'meta.version', nil) }
+      ks = ['origin', 'branch', 'ns', 'name', 'data']
+      (origin, branch, ns, name, data) = ks.map { |k| o.fetch(k, nil) }
+      if origin && branch && ns && name && data
+        parsed = send("parse_#{@doc_type}", data)
+        id = { 'ns' => ns, 'name' => name, 'version' => get(parsed, 'meta.version', nil) }
         rule_id = make_id(@doc_type, id)
-        RemoveMeta.perform_async(origin: o[:origin], branch: o[:branch], rule_id: rule_id)
+        RemoveMeta.perform_async(origin: origin, branch: branch, rule_id: rule_id)
         RemoveEffective.perform_async(rule_id: rule_id)
         RemoveApplicable.perform_async(rule_id: rule_id)
         RemoveStoredRule.perform_async(rule_id: rule_id)
