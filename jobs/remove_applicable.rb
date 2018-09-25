@@ -32,7 +32,9 @@ module Jobs
     def perform(o)
       rule_id = o.fetch('rule_id', nil)
       if rule_id
-        Storage.instance.tables.remove_applicable(rule_id)
+        Storage.instance.tables.unless_rule_in_use(rule_id) do
+          Storage.instance.tables.remove_applicable(rule_id)
+        end
       end
     end
   end

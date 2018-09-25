@@ -74,13 +74,21 @@ class Tables
   end
   
   def store_meta(o)
+    keyspace = @env.get(:keyspace)
     keys = [:ns, :name, :origin, :branch, :rule_id, :version, :runtime, :criticality]
     insert_one('rules', keys, o)
+    execute do
+      "UPDATE #{keyspace}.rules_in_use SET refs=refs+1 WHERE rule_id='#{o[:rule_id]}'"
+    end if o.key?(:rule_id)
   end
 
   def remove_meta(origin, branch, rule_id)
+    keyspace = @env.get(:keyspace)
     execute do
       build_delete('rules', "origin='#{origin}' AND branch='#{branch}' AND rule_id='#{rule_id}'")
+    end
+    execute do
+      "UPDATE #{keyspace}.rules_in_use SET refs=refs-1 WHERE rule_id='#{rule_id}'"
     end
   end
   
@@ -105,6 +113,18 @@ class Tables
     query_rule_presence(rule_id, branch, @empty_fn, &bl).join
   end
 
+  def if_rule_in_use(rule_id, &bl)
+    query_rule_use(rule_id) do |count|
+      bl.call if count > 0
+    end.join if bl
+  end
+
+  def unless_rule_in_use(rule_id, &bl)
+    query_rule_use(rule_id) do |count|
+      bl.call if count == 0
+    end.join if bl
+  end
+
   def lookup_rules_in_repo(url, branch, &bl)
     query_data('rules', ['rule_id'], {
                   origin: { type: :string, value: url },
@@ -120,6 +140,12 @@ class Tables
     end
   end
 
+  def query_rule_use(rule_id, &bl)
+    query_data('rules_in_use', ['refs'], {
+                 rule_id: { type: :string, value: rule_id },
+               }, &bl)
+  end
+  
   def query_repo_presence(clone_url, fn, &bl)
     query_if(
       'repositories',

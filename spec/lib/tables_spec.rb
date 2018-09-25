@@ -191,7 +191,24 @@ describe Tables do
       tables = Tables.new
       validate = build_validation(tables)
       tables.store_meta(meta)
-      check_first(validate, build_insert_expect_from_doc('rules', meta))
+
+      exs = [
+        {
+          tbl: 'rules',
+          op: :insert,
+          keys: meta.keys.map(&:to_s),
+          vals: meta.values,
+        },
+        {
+          op: :update,
+          tbl: 'rules_in_use',
+          updates: [{key: 'refs', val: 'refs+1'}],
+          wheres: [
+            { key: 'rule_id', val: "'#{meta[:rule_id]}'" },
+          ]
+        }
+      ]
+      check_many(validate, exs)
     end
   end
 
@@ -422,6 +439,14 @@ describe Tables do
             'branch' => "'#{branch}'",
             'rule_id' => "'#{rule_id}'",
           },
+        },
+        {
+          op: :update,
+          tbl: 'rules_in_use',
+          updates: [{key: 'refs', val: 'refs-1'}],
+          wheres: [
+            { key: 'rule_id', val: "'#{rule_id}'" },
+          ]
         }
       ]
 
