@@ -55,8 +55,10 @@ class Tables
 
       execute_when_keys_updates([{ section: section, key: key}], '-1')
     end.join
-    execute do
-      build_delete('whens', "rule_id='#{rule_id}'")
+    unless_rule_in_use(rule_id) do
+      execute do
+        build_delete('whens', "rule_id='#{rule_id}'")
+      end
     end
   end
 
@@ -68,8 +70,10 @@ class Tables
   end
 
   def remove_effective(rule_id)
-    execute do
-      build_delete('effective', "rule_id='#{rule_id}'")
+    unless_rule_in_use(rule_id) do
+      execute do
+        build_delete('effective', "rule_id='#{rule_id}'")
+      end
     end
   end
   

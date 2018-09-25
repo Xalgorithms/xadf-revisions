@@ -415,9 +415,20 @@ describe Tables do
 
       validate = build_validation(tables)
 
+      expect(tables).to receive(:unless_rule_in_use).with(rule_id).and_yield
       tables.remove_effective(rule_id)
 
       check_first(validate, tbl: 'effective', conds: { 'rule_id' => "'#{rule_id}'" })
+    end
+  end
+
+  it 'should not remove effectives if the rule is in use' do
+    rand_times do
+      rule_id = Faker::Number.hexadecimal(40)
+      tables = Tables.new
+
+      expect(tables).to receive(:unless_rule_in_use).with(rule_id)
+      tables.remove_effective(rule_id)
     end
   end
 
@@ -466,6 +477,7 @@ describe Tables do
       
       validate = build_validation(tables, true, OpenStruct.new(rows: results))
 
+      expect(tables).to receive(:unless_rule_in_use).with(rule_id).and_yield
       tables.remove_applicable(rule_id)
 
       exs = [
@@ -492,6 +504,46 @@ describe Tables do
           conds: { 'rule_id' => "'#{rule_id}'" }
         }
       ]
+      check_many(validate, exs)
+    end
+  end
+
+  it 'should not remove applicables if the rule is in use' do
+    rand_times do
+      rule_id = Faker::Number.hexadecimal(40)
+      tables = Tables.new
+
+      results = rand_array do
+        { 'section' => Faker::Lorem.word, 'key' => Faker::Lorem.word }
+      end
+      
+      validate = build_validation(tables, true, OpenStruct.new(rows: results))
+
+      expect(tables).to receive(:unless_rule_in_use).with(rule_id)
+      tables.remove_applicable(rule_id)
+
+      exs = [
+        {
+          tbl: 'whens',
+          keys: ['section', 'key'],
+          conds: [
+            { key: 'rule_id', value: "'#{rule_id}'" },
+          ],
+        }
+      ] + results.map do |res|
+        {
+          op: :update,
+          tbl: 'when_keys',
+          updates: [{key: 'refs', val: 'refs-1'}],
+          wheres: [
+            { key: 'section', val: "'#{res['section']}'" },
+            { key: 'key',     val: "'#{res['key']}'" },
+          ]
+        }
+      end
+
+      # the final delete in the previous test should be missing in this case
+      
       check_many(validate, exs)
     end
   end

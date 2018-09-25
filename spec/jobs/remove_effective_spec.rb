@@ -34,7 +34,6 @@ describe Jobs::RemoveEffective do
     rand_times do
       rule_id = Faker::Number.hexadecimal(40)
 
-      expect(Jobs::Storage.instance.tables).to receive(:unless_rule_in_use).with(rule_id).and_yield
       expect(Jobs::Storage.instance.tables).to receive(:remove_effective).with(rule_id)
 
       job = Jobs::RemoveEffective.new
@@ -42,18 +41,6 @@ describe Jobs::RemoveEffective do
     end
   end
 
-  it 'should do nothing if the rule_id is still in use' do
-    rand_times do
-      rule_id = Faker::Number.hexadecimal(40)
-
-      expect(Jobs::Storage.instance.tables).to receive(:unless_rule_in_use).with(rule_id)
-      expect(Jobs::Storage.instance.tables).to_not receive(:remove_applicable)
-
-      job = Jobs::RemoveEffective.new
-      job.perform(rand_document.merge('rule_id' => rule_id))
-    end
-  end
-  
   it 'should do nothing if the rule_id is not specified' do
     rand_times do
       expect(Jobs::Storage.instance.tables).to_not receive(:remove_effective)
