@@ -72,9 +72,9 @@ class Documents
     
     url = @env.get(:url)
     
-    puts "> connecting to Mongo (url=#{url})"
+    LocalLogger.give('connecting to Mongo', url: url)
     cl = Mongo::Client.new(url)
-    puts "< connected"
+    LocalLogger.got('connected to Mongo', url: url)
 
     cl
   end

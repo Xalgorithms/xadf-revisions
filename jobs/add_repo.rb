@@ -50,11 +50,11 @@ module Jobs
           if job_kl
             job_kl.perform_async(o)
           else
-            puts "! no job class found (type=#{o[:type]})"
+            LocalLogger.error('no job class found', type: o[:type])
           end
         end
       else
-        puts "? no url provided"
+        LocalLogger.warn('no url provided')
       end
 
       false

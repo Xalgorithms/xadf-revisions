@@ -233,21 +233,21 @@ class Tables
       hosts = @env.get(:hosts)
       keyspace = @env.get(:keyspace)
       
-      puts "# discovering cluster (hosts=#{hosts})"
+      LocalLogger.info('discovering cluster', hosts: hosts)
       cluster = ::Cassandra.cluster(hosts: hosts)
 
-      puts "# connecting to keyspace (keyspace=#{keyspace})"
+      LocalLogger.info('connecting to keyspace', keyspace: keyspace)
       cluster.connect(keyspace)
     rescue ::Cassandra::Errors::NoHostsAvailable => e
-      puts '! no available Cassandra instance'
+      LocalLogger.error('no available Cassandra instance')
       p e
       nil
     rescue ::Cassandra::Errors::IOError => e
-      puts '! failed to connect to cassandra'
+      LocalLogger.error('failed to connect to cassandra')
       p e
       nil
     rescue ::Cassandra::Errors::InvalidError => e
-      puts '! failed to connect to cassandra'
+      LocalLogger.error('failed to connect to cassandra')
       p e
       nil
     end
@@ -269,10 +269,10 @@ class Tables
         stm = session.prepare(q)
         session.execute(stm)
       else
-        puts "! no generated statement"
+        LocalLogger.error('no generated statement')
       end
     else
-      puts '! no session available'
+      LocalLogger.error('no session available')
     end
   end
 

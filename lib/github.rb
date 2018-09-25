@@ -24,12 +24,14 @@
 require 'multi_json'
 require 'rugged'
 
+require_relative './local_logger'
+
 class GitHub
   def get(url, branch=nil)
-    puts "# getting from github (url=#{url}; branch=#{branch})"
+    LocalLogger.info('getting from github', url: url, branch: branch)
     with_repo(url) do |repo|
       branch_names = branch ? [branch] : ['origin/master', 'origin/production']
-      puts "# enumerating branches (branches=#{branch_names})"
+      LocalLogger.info('enumerating branches', branches: branch_names)
       rv = enumerate_namespaces_by_branches(repo, branch_names).inject([]) do |a, ns|
         props = { origin: url, branch: ns[:branch].name, ns: ns[:name] }
         a + ns[:tree].map do |ref|
@@ -66,11 +68,17 @@ class GitHub
   private
   
   def with_repo(url)
-    puts "> fetching (url=#{url})"
+    LocalLogger.give('fetching', url: url)
     
     path = Pathname.new(URI.parse(url).path)
     dn = path.basename('.git').to_s
-    rv = yield(Rugged::Repository.clone_at(url, dn, bare: true))
+    repo = Rugged::Repository.clone_at(url, dn, bare: true)
+
+    LocalLogger.got('fetched', url: url)
+
+    rv = yield(repo)
+
+    LocalLogger.info('removing clone directory', dn: dn)
 
     FileUtils.rm_rf(dn)
 
@@ -89,11 +97,11 @@ class GitHub
   def enumerate_namespaces_by_branches(repo, branch_names)
     branch_names.inject([]) do |a, bn|
       br = repo.branches[bn]
-      puts "# looking for branch (bn=#{bn}; br=#{br})"
+      LocalLogger.info('looking for branch', bn: bn, br: br)
       br ? a + [br] : a
     end.inject([]) do |a, br|
       a + get_namespaces_on_branch(repo, br).map do |ns|
-        puts "# found ns on branch (br=#{br}; ns=#{ns})"
+        LocalLogger.info('found ns on branch', br: br, ns: ns)
         ref = br.target.tree.path(ns)
         { name: ns, tree: repo.lookup(ref[:oid]), branch: br }
       end

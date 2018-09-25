@@ -25,6 +25,7 @@ require 'singleton'
 
 require_relative '../jobs/add_repo'
 require_relative '../jobs/update_repo'
+require_relative '../lib/local_logger'
 
 module Services
   class Actions
@@ -44,11 +45,11 @@ module Services
       th = o.fetch('thing', nil).to_sym
       act = @actions.fetch(n, {}).fetch(th, nil)
       if act
-        puts "> enqueuing action (act=#{act})"
+        LocalLogger.give('enqueuing action', act: act)
         act.perform_async(o.fetch('args', {}))
-        puts "< enqueued action (act=#{act})"
+        LocalLogger.got('enqueued action', act: act)
       else
-        puts "? unknown action (n=#{n}; th=#{th})"
+        LocalLogger.warn('unknown action', n: n, th: th)
       end
     end
   end

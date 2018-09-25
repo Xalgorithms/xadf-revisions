@@ -35,7 +35,7 @@ module Jobs
       begin
         pdata = MultiJson.decode(o['data'])
       rescue MultiJson::ParseError => err
-        puts "! failed to parse table data (o=#{o})"
+        LocalLogger.error('failed to parse table data', o: o)
       end
 
       Storage.instance.docs.store_table_data(o.merge('data' => pdata)) if pdata

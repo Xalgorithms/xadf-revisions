@@ -46,7 +46,7 @@ module Jobs
         'branch_removed' => method(:perform_branch_removed),
       }
       @default_fn = lambda do |o|
-        puts "? unknown what (what=#{o.fetch('what', nil)})"
+        LocalLogger.warn('unknown what', what: o.fetch('what', nil))
       end
       @jobs = {
         update: {
@@ -74,10 +74,10 @@ module Jobs
     private
 
     def invoke_jobs(ctx, items)
-      puts "# invoking jobs (ctx=#{ctx}; items=#{items.length})"
+      LocalLogger.info('invoking jobs', ctx:ctx, items: items.length)
       items.each do |it|
         kl = @jobs[ctx].fetch(it[:type], nil)
-        puts "# invoking job (kl=#{kl}; it=#{it})"
+        LocalLogger.info('invoking job', kl: kl, it: it)
         kl.perform_async(it) if kl
       end
     end
@@ -97,7 +97,7 @@ module Jobs
     end
 
     def perform_branch_created(o)
-      puts "# branch created (url=#{o['url']}; branch=#{o['branch']})"
+      LocalLogger.info('branch created', url: o['url'], branch: o['branch'])
       gh = GitHub.new
       invoke_jobs(:update, gh.get(o['url'], o['branch']))
     end
