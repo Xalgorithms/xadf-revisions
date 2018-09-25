@@ -74,8 +74,10 @@ module Jobs
     private
 
     def invoke_jobs(ctx, items)
+      puts "# invoking jobs (ctx=#{ctx}; items=#{items.length})"
       items.each do |it|
         kl = @jobs[ctx].fetch(it[:type], nil)
+        puts "# invoking job (kl=#{kl}; it=#{it})"
         kl.perform_async(it) if kl
       end
     end

@@ -89,9 +89,11 @@ class GitHub
   def enumerate_namespaces_by_branches(repo, branch_names)
     branch_names.inject([]) do |a, bn|
       br = repo.branches[bn]
+      puts "# looking for branch (bn=#{bn}; br=#{br})"
       br ? a + [br] : a
     end.inject([]) do |a, br|
       a + get_namespaces_on_branch(repo, br).map do |ns|
+        puts "# found ns on branch (br=#{br}; ns=#{ns})"
         ref = br.target.tree.path(ns)
         { name: ns, tree: repo.lookup(ref[:oid]), branch: br }
       end
