@@ -24,6 +24,11 @@
 require 'singleton'
 
 require_relative '../jobs/add_repo'
+require_relative '../jobs/add_adhoc_data'
+require_relative '../jobs/add_adhoc_rule'
+require_relative '../jobs/remove_adhoc_data'
+require_relative '../jobs/remove_adhoc_rule'
+require_relative '../jobs/remove_repo'
 require_relative '../jobs/update_repo'
 require_relative '../lib/local_logger'
 
@@ -34,10 +39,17 @@ module Services
     def execute(o)
       @actions ||= {
         add: {
-          repository: Jobs::AddRepo
+          repository: Jobs::AddRepo,
+          rule:       Jobs::AddAdhocRule,
+          data:       Jobs::AddAdhocData,
         },
         update: {
-          repository: Jobs::UpdateRepo
+          repository: Jobs::UpdateRepo,
+        },
+        remove: {
+          repository: Jobs::RemoveRepo,
+          rule:       Jobs::RemoveAdhocRule,
+          data:       Jobs::RemoveAdhocData,
         },
       }
 
