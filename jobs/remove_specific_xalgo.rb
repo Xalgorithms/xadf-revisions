@@ -23,15 +23,27 @@
 # <http://www.gnu.org/licenses/>.
 require 'sidekiq'
 
-require_relative './add_data'
+require_relative './storage'
+require_relative '../lib/ids'
 
 module Jobs
-  class AddAdhocData < AddData
-    def generate_additional_content
-      {
-        'origin' => 'origin:adhoc',
-        'branch' => 'branch:adhoc',
-      }
+  class RemoveSpecificXalgo
+    include Ids
+    include Sidekiq::Worker
+
+    def initialize(doc_type)
+      @doc_type = doc_type
+    end
+    
+    def perform(o)
+      ks = ['ns', 'name', 'version']
+      (ns, name, version) = ks.map { |k| o.fetch(k, nil) }
+
+      if ns && name && version
+        rule_id = make_id(@doc_type, 'ns' => ns, 'name' => name, 'version' => version)
+        Storage.instance.docs.remove_rule_by_id(rule_id)
+        Storage.instance.tables.purge_rule(rule_id)
+      end
     end
   end
 end

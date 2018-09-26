@@ -1,6 +1,9 @@
 # Copyright (C) 2018 Don Kelly <karfai@gmail.com>
 # Copyright (C) 2018 Hayk Pilosyan <hayk.pilos@gmail.com>
 
+# Copyright (C) 2018 Don Kelly <karfai@gmail.com>
+# Copyright (C) 2018 Hayk Pilosyan <hayk.pilos@gmail.com>
+
 # This file is part of Interlibr, a functional component of an
 # Internet of Rules (IoR).
 
@@ -23,28 +26,32 @@
 # <http://www.gnu.org/licenses/>.
 require 'faker'
 
-require_relative '../../jobs/add_table'
-require_relative './add_xalgo_checks'
+require_relative '../../jobs/remove_specific_data'
+require_relative '../../jobs/storage'
 
-describe Jobs::AddTable do
-  include Specs::Jobs::AddXalgoChecks
+describe Jobs::RemoveSpecificData do
   include Radish::Randomness
 
-  it "should always store the document, meta and effective (on any branch)" do
-    rand_array { Faker::Lorem.word }.each do |branch|
-      verify_storage(Jobs::AddTable, 'table', nil, nil, branch: branch)
+  it 'should remove data by origin, branch, ns, name' do
+    rand_times do
+      origin = Faker::Internet.url
+      branch = Faker::Lorem.word
+      ns = Faker::Lorem.word
+      name = Faker::Lorem.word
+
+      expect(Jobs::Storage.instance.docs).to receive(:remove_specific_table_data).with(origin, branch, ns, name)
+      
+      job = Jobs::RemoveSpecificData.new
+      job.perform(rand_document.merge('origin' => origin, 'branch' => branch, 'ns' => ns, 'name' => name))
     end
   end
-  
-  it "should always store the document, meta and effective (on master)" do
-    verify_storage(Jobs::AddTable, 'table', nil, nil, branch: 'master')
-  end
-  
-  it "should not store the document, meta and effective if the rule exists (on production)" do
-    verify_storage(Jobs::AddTable, 'table', nil, nil, branch: 'production', should_store_rule: false)
-  end
-  
-  it "should store the document, meta and effective if the rule does not exist (on production)" do
-    verify_storage(Jobs::AddTable, 'table', nil, nil, branch: 'production', should_store_rule: true)
+
+  it 'should do nothing if the args are not specified' do
+    rand_times do
+      expect(Jobs::Storage.instance.docs).to_not receive(:remove_specific_table_data)
+
+      job = Jobs::RemoveSpecificData.new
+      job.perform(rand_document)
+    end
   end
 end

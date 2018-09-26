@@ -21,17 +21,11 @@
 # You should have received a copy of the GNU Affero General Public
 # License along with this program. If not, see
 # <http://www.gnu.org/licenses/>.
-require 'sidekiq'
-
-require_relative './add_data'
+require_relative './add_table'
+require_relative './adhoc_classify'
 
 module Jobs
-  class AddAdhocData < AddData
-    def generate_additional_content
-      {
-        'origin' => 'origin:adhoc',
-        'branch' => 'branch:adhoc',
-      }
-    end
+  class AddAdhocTable < AddTable
+    include AdhocClassify
   end
 end

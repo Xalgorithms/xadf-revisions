@@ -26,8 +26,10 @@ require 'singleton'
 require_relative '../jobs/add_repo'
 require_relative '../jobs/add_adhoc_data'
 require_relative '../jobs/add_adhoc_rule'
-require_relative '../jobs/remove_adhoc_data'
-require_relative '../jobs/remove_adhoc_rule'
+require_relative '../jobs/add_adhoc_table'
+require_relative '../jobs/remove_specific_data'
+require_relative '../jobs/remove_specific_rule'
+require_relative '../jobs/remove_specific_table'
 require_relative '../jobs/remove_repo'
 require_relative '../jobs/update_repo'
 require_relative '../lib/local_logger'
@@ -41,6 +43,7 @@ module Services
         add: {
           repository: Jobs::AddRepo,
           rule:       Jobs::AddAdhocRule,
+          table:      Jobs::AddAdhocTable,
           data:       Jobs::AddAdhocData,
         },
         update: {
@@ -48,8 +51,9 @@ module Services
         },
         remove: {
           repository: Jobs::RemoveRepo,
-          rule:       Jobs::RemoveAdhocRule,
-          data:       Jobs::RemoveAdhocData,
+          rule:       Jobs::RemoveSpecificRule,
+          table:      Jobs::RemoveSpecificTable,
+          data:       Jobs::RemoveSpecificData,
         },
       }
 

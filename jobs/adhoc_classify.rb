@@ -21,16 +21,17 @@
 # You should have received a copy of the GNU Affero General Public
 # License along with this program. If not, see
 # <http://www.gnu.org/licenses/>.
-require 'sidekiq'
-
-require_relative './add_data'
-
 module Jobs
-  class AddAdhocData < AddData
-    def generate_additional_content
+  module AdhocClassify
+    def classify(o, parsed)
       {
-        'origin' => 'origin:adhoc',
-        'branch' => 'branch:adhoc',
+        ns: o['ns'],
+        name: o['name'],
+        origin: 'origin:adhoc',
+        branch: 'branch:adhoc',
+        version: get(parsed, 'meta.version', '999.999.999'),
+        runtime: get(parsed, 'meta.runtime', nil),
+        criticality: get(parsed, 'meta.criticality', 'normal'),
       }
     end
   end

@@ -23,12 +23,18 @@
 # <http://www.gnu.org/licenses/>.
 require 'sidekiq'
 
+require_relative './storage'
+
 module Jobs
-  class RemoveAdhocData
+  class RemoveSpecificData
     include Sidekiq::Worker
 
     def perform(o)
-      p [:remove_adhoc_data, o]
+      ks = ['origin', 'branch', 'ns', 'name']
+      (origin, branch, ns, name) = ks.map { |k| o.fetch(k, nil) }
+      if origin && branch && ns && name
+        Storage.instance.docs.remove_specific_table_data(origin, branch, ns, name)
+      end
     end
   end
 end

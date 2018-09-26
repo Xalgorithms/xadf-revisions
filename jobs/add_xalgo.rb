@@ -75,10 +75,9 @@ module Jobs
 
       perform_additional(@classified)
     end
-    
-    def parse_and_classify(o)
-      parsed = send("parse_#{@doc_type}", o['data'])
-      meta = {
+
+    def classify(o, parsed)
+      {
         ns: o['ns'],
         name: o['name'],
         origin: o['origin'],
@@ -87,6 +86,11 @@ module Jobs
         runtime: get(parsed, 'meta.runtime', nil),
         criticality: get(parsed, 'meta.criticality', 'normal'),
       }
+    end
+    
+    def parse_and_classify(o)
+      parsed = send("parse_#{@doc_type}", o['data'])
+      meta = classify(o, parsed)
 
       {
         public_id: make_id(@doc_type, meta.slice(:ns, :name, :version).with_indifferent_access),

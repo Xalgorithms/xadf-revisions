@@ -21,14 +21,11 @@
 # You should have received a copy of the GNU Affero General Public
 # License along with this program. If not, see
 # <http://www.gnu.org/licenses/>.
-require 'sidekiq'
+require_relative './add_rule'
+require_relative './adhoc_classify'
 
 module Jobs
-  class AddAdhocRule
-    include Sidekiq::Worker
-
-    def perform(o)
-      p [:add_adhoc_rule, o]
-    end
+  class AddAdhocRule < AddRule
+    include AdhocClassify
   end
 end

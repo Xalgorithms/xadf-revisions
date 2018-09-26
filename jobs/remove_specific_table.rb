@@ -23,15 +23,12 @@
 # <http://www.gnu.org/licenses/>.
 require 'sidekiq'
 
-require_relative './add_data'
+require_relative './remove_specific_xalgo'
 
 module Jobs
-  class AddAdhocData < AddData
-    def generate_additional_content
-      {
-        'origin' => 'origin:adhoc',
-        'branch' => 'branch:adhoc',
-      }
+  class RemoveSpecificTable < RemoveSpecificXalgo
+    def initialize
+      super('table')
     end
   end
 end

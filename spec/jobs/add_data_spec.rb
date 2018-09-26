@@ -21,17 +21,36 @@
 # You should have received a copy of the GNU Affero General Public
 # License along with this program. If not, see
 # <http://www.gnu.org/licenses/>.
-require 'sidekiq'
+require 'faker'
+require 'multi_json'
 
-require_relative './add_data'
+require_relative '../../jobs/add_data'
+require_relative '../../jobs/storage'
+require_relative './add_xalgo_checks'
 
-module Jobs
-  class AddAdhocData < AddData
-    def generate_additional_content
-      {
-        'origin' => 'origin:adhoc',
-        'branch' => 'branch:adhoc',
-      }
+describe Jobs::AddData do
+  include Radish::Randomness
+
+  it 'should store JSON from the arguments' do
+    rand_times do
+      data = rand_document
+      args = rand_document
+
+      expect(Jobs::Storage.instance.docs).to receive(:store_table_data).with(args.merge('data' => data))
+      
+      job = Jobs::AddData.new
+      job.perform(args.merge('data' => MultiJson.encode(data)))
+    end
+  end
+
+  it 'should do nothing if data is not JSON' do
+    rand_times do
+      args = rand_document
+
+      expect(Jobs::Storage.instance.docs).to_not receive(:store_table_data)
+      
+      job = Jobs::AddData.new
+      job.perform(args.merge('data' => Faker::Lorem.paragraph))
     end
   end
 end

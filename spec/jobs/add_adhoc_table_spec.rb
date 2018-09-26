@@ -21,17 +21,23 @@
 # You should have received a copy of the GNU Affero General Public
 # License along with this program. If not, see
 # <http://www.gnu.org/licenses/>.
-require 'sidekiq'
+require 'radish/documents/core'
 
-require_relative './add_data'
+require_relative '../../jobs/add_adhoc_table'
+require_relative '../../lib/ids'
+require_relative './add_xalgo_checks'
 
-module Jobs
-  class AddAdhocData < AddData
-    def generate_additional_content
-      {
-        'origin' => 'origin:adhoc',
-        'branch' => 'branch:adhoc',
+describe Jobs::AddTable do
+  include Specs::Jobs::AddXalgoChecks
+  include Radish::Randomness
+
+  it "should always store the document, meta, applicable and effective" do
+    rand_times do
+      props = {
+        origin: 'origin:adhoc',
+        branch: 'branch:adhoc',
       }
+      verify_storage(Jobs::AddAdhocTable, 'table', nil, nil, props)
     end
   end
 end

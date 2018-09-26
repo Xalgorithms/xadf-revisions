@@ -23,13 +23,12 @@
 # <http://www.gnu.org/licenses/>.
 require 'faker'
 
-require_relative '../../jobs/add_rule'
+require_relative '../../jobs/add_adhoc_rule'
 require_relative '../../jobs/storage'
 require_relative './add_xalgo_checks'
 
-describe Jobs::AddRule do
+describe Jobs::AddAdhocRule do
   include Specs::Jobs::AddXalgoChecks
-  include Radish::Randomness
 
   def add_whens(parsed, public_id)
     @whens = rand_array { Faker::Lorem.word }.inject([]) do |arr, section|
@@ -64,31 +63,16 @@ describe Jobs::AddRule do
     end
   end
   
-  it "should always store the document, meta and effective (on any branch)" do
-    rand_array { Faker::Lorem.word }.each do |branch|
+  it "should always store the document, meta, applicable and effective" do
+    rand_times do
+      props = {
+        origin: 'origin:adhoc',
+        branch: 'branch:adhoc',
+      }
+      
       verify_storage(
-        Jobs::AddRule, 'rule', method(:add_whens), method(:verify_applicable), branch: branch
+        Jobs::AddAdhocRule, 'rule', method(:add_whens), method(:verify_applicable), props
       )
     end
-  end
-  
-  it "should always store the document, meta and effective (on master)" do
-    verify_storage(
-      Jobs::AddRule, 'rule', method(:add_whens), method(:verify_applicable), branch: 'master'
-    )
-  end
-  
-  it "should not store the document, meta and effective if the rule exists (on production)" do
-    verify_storage(
-      Jobs::AddRule, 'rule', method(:add_whens), method(:verify_applicable),
-      branch: 'production', should_store_rule: false
-    )
-  end
-  
-  it "should store the document, meta and effective if the rule does not exist (on production)" do
-    verify_storage(
-      Jobs::AddRule, 'rule', method(:add_whens), method(:verify_applicable),
-      branch: 'production', should_store_rule: true
-    )
   end
 end

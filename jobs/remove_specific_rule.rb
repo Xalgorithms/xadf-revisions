@@ -23,12 +23,12 @@
 # <http://www.gnu.org/licenses/>.
 require 'sidekiq'
 
-module Jobs
-  class RemoveAdhocRule
-    include Sidekiq::Worker
+require_relative './remove_specific_xalgo'
 
-    def perform(o)
-      p [:remove_adhoc_rule, o]
+module Jobs
+  class RemoveSpecificRule < RemoveSpecificXalgo
+    def initialize
+      super('rule')
     end
   end
 end

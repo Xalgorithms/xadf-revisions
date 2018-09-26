@@ -56,6 +56,10 @@ class Documents
     delete_many_by_origin_branch('table_data', origin, branch)
   end
 
+  def remove_specific_table_data(origin, branch, ns, name)
+    connection['table_data'].delete_many(origin: origin, branch: branch, ns: ns, name: name)
+  end
+  
   def lookup_rule_branches(rule_id)
     connection['rules'].find(public_id: rule_id).map(&method(:extract_branch_origin))
   end

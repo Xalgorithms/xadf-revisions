@@ -28,10 +28,12 @@ require 'faker'
 require 'tzinfo'
 
 require_relative '../../jobs/storage'
+require_relative '../../lib/ids'
 
 module Specs
   module Jobs
     module AddXalgoChecks
+      include Ids
       include Radish::Randomness
       
       def verify_storage(job_kl, rule_type, parsed_fn=nil, verify_fn=nil, props={})
@@ -94,7 +96,7 @@ module Specs
             args: {
               ns: Faker::Lorem.word,
               name: Faker::Lorem.word,
-              origin: Faker::Internet.url,
+              origin: props.fetch(:origin, Faker::Internet.url),
               branch: props.fetch(:branch, Faker::Lorem.word),
             },
             effectives: countries.map do |c|

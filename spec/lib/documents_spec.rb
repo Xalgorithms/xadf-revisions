@@ -124,4 +124,55 @@ describe Documents do
       docs.remove_rule_by_id(rule_id)      
     end
   end
+
+  it 'should list all instances of a rule across branches' do
+    rand_times do
+      rule_id = Faker::Number.hexadecimal(40)
+      exes = rand_array do
+        {
+          id: rule_id,
+          origin: Faker::Internet.url,
+          branch: Faker::Lorem.word,
+        }
+      end
+
+      results = exes.map do |ex|
+        rand_document.merge({
+          'public_id' => ex[:id],
+          'origin' => ex[:origin],
+          'branch' => ex[:branch],
+        })
+      end
+
+      conn = double('Fake: mongo connection')
+      coll = double('Fake: mongo rules collection')
+
+      expect(conn).to receive('[]').with('rules').and_return(coll)
+      expect(coll).to receive(:find).with(public_id: rule_id).and_return(results)
+
+      docs = Documents.new
+      expect(docs).to receive(:connection).and_return(conn)
+
+      expect(docs.lookup_rule_branches(rule_id)).to eql(exes)
+    end
+  end
+
+  it 'should remove table data based on origin, branch, ns, name' do
+    rand_times do
+      origin = Faker::Internet.url
+      branch = Faker::Lorem.word
+      ns = Faker::Lorem.word
+      name = Faker::Lorem.word
+
+      conn = double('Fake: mongo connection')
+      coll = double('Fake: mongo rules collection')
+
+      expect(conn).to receive('[]').with('table_data').and_return(coll)
+      expect(coll).to receive(:delete_many).with(origin: origin, branch: branch, ns: ns, name: name)
+
+      docs = Documents.new
+      expect(docs).to receive(:connection).and_return(conn)
+      docs.remove_specific_table_data(origin, branch, ns, name)
+    end
+  end
 end

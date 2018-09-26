@@ -31,16 +31,30 @@ module Jobs
     include Sidekiq::Worker
 
     def perform(o)
-      pdata = nil
-      begin
-        pdata = MultiJson.decode(o['data'])
-      rescue MultiJson::ParseError => err
-        LocalLogger.error('failed to parse table data', o: o)
+      maybe_parse(o.fetch('data', '')) do |json|
+        args = {
+          'data' => json,
+        }.merge(generate_additional_content)
+        
+        Storage.instance.docs.store_table_data(o.merge(args))
       end
 
-      Storage.instance.docs.store_table_data(o.merge('data' => pdata)) if pdata
-
       false
+    end
+
+    private
+
+    def generate_additional_content
+      {}
+    end
+    
+    def maybe_parse(json_s)
+      begin
+        json = MultiJson.decode(json_s)
+        yield(json) if json
+      rescue MultiJson::ParseError => err
+        LocalLogger.error('failed to parse table data', s: json_s)
+      end
     end
   end
 end

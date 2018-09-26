@@ -33,6 +33,7 @@ describe Services::Actions do
       add: {
         repository: Jobs::AddRepo,
         rule:       Jobs::AddAdhocRule,
+        table:      Jobs::AddAdhocTable,
         data:       Jobs::AddAdhocData,
       },
       update: {
@@ -40,8 +41,9 @@ describe Services::Actions do
       },
       remove: {
         repository: Jobs::RemoveRepo,
-        rule:       Jobs::RemoveAdhocRule,
-        data:       Jobs::RemoveAdhocData,
+        rule:       Jobs::RemoveSpecificRule,
+        table:      Jobs::RemoveSpecificTable,
+        data:       Jobs::RemoveSpecificData,
       },
     }
     

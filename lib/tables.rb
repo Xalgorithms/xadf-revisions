@@ -26,6 +26,7 @@ require 'active_support/core_ext/string'
 require 'cassandra'
 
 require_relative './local_env'
+require_relative './local_logger'
 
 class Tables
   def initialize
@@ -49,12 +50,8 @@ class Tables
   end
 
   def remove_applicable(rule_id)
-    query_data('whens', ['section', 'key'], {
-                  rule_id: { type: :string, value: rule_id },
-               }) do |section, key|
-
-      execute_when_keys_updates([{ section: section, key: key}], '-1')
-    end.join
+    decrement_when_keys_for_rule(rule_id).join
+    
     unless_rule_in_use(rule_id) do
       execute do
         build_delete('whens', "rule_id='#{rule_id}'")
@@ -79,8 +76,13 @@ class Tables
   
   def store_meta(o)
     keyspace = @env.get(:keyspace)
-    keys = [:ns, :name, :origin, :branch, :rule_id, :version, :runtime, :criticality]
-    insert_one('rules', keys, o)
+    keys_rules = [:ns, :name, :origin, :branch, :rule_id, :version, :runtime, :criticality]
+    within_batch do
+      [
+        build_insert('rules', keys_rules, o),
+        build_insert('rules_origin_and_branch', [:rule_id, :origin, :branch], o),
+      ]
+    end
     execute do
       "UPDATE #{keyspace}.rules_in_use SET refs=refs+1 WHERE rule_id='#{o[:rule_id]}'"
     end if o.key?(:rule_id)
@@ -95,7 +97,34 @@ class Tables
       "UPDATE #{keyspace}.rules_in_use SET refs=refs-1 WHERE rule_id='#{rule_id}'"
     end
   end
-  
+
+  def purge_rule(rule_id)
+    dels = []
+    query_data('rules_origin_and_branch', ['rule_id', 'origin', 'branch'], {
+                 rule_id: { type: :string, value: rule_id },
+               }) do |*args|
+      dels << args
+    end.join
+
+    decrement_when_keys_for_rule(rule_id).join
+
+    within_batch do
+      dels.inject([]) do |arr, tup|
+        arr + [
+          build_delete('rules', "origin='#{tup[1]}' AND branch='#{tup[2]}' AND rule_id='#{tup[0]}'"),
+          build_delete('rules_origin_and_branch', "rule_id='#{tup[0]}'"),
+          build_delete('effective', "rule_id='#{rule_id}'"),
+          build_delete('whens', "rule_id='#{rule_id}'"),
+        ]
+      end
+    end
+    
+    keyspace = @env.get(:keyspace)
+    execute do
+      "UPDATE #{keyspace}.rules_in_use SET refs=refs-#{dels.length} WHERE rule_id='#{rule_id}'"
+    end
+  end
+
   def store_repository(o)
     keys = [:clone_url]
     insert_one('repositories', keys, o)
@@ -137,6 +166,15 @@ class Tables
   end
   
   private
+
+  def decrement_when_keys_for_rule(rule_id)
+    query_data('whens', ['section', 'key'], {
+                  rule_id: { type: :string, value: rule_id },
+               }) do |section, key|
+
+      execute_when_keys_updates([{ section: section, key: key}], '-1')
+    end
+  end
 
   def insert_one(tbl, keys, o)
     execute do

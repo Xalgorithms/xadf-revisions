@@ -200,6 +200,12 @@ describe Tables do
           vals: meta.values,
         },
         {
+          tbl: 'rules_origin_and_branch',
+          op: :insert,
+          keys: ['rule_id', 'origin', 'branch'],
+          vals: [:rule_id, :origin, :branch].map { |k| meta[k] },
+        },
+        {
           op: :update,
           tbl: 'rules_in_use',
           updates: [{key: 'refs', val: 'refs+1'}],
@@ -208,6 +214,7 @@ describe Tables do
           ]
         }
       ]
+
       check_many(validate, exs)
     end
   end
