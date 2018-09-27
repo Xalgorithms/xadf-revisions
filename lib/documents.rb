@@ -25,6 +25,7 @@ require 'active_support/core_ext/string'
 require 'mongo'
 
 require_relative './local_env'
+require_relative './local_logger'
 
 class Documents
   def initialize
@@ -55,8 +56,20 @@ class Documents
     delete_many_by_origin_branch('table_data', origin, branch)
   end
 
+  def lookup_rule_branches(rule_id)
+    connection['rules'].find(public_id: rule_id).map(&method(:extract_branch_origin))
+  end
+
   private
 
+  def extract_branch_origin(o)
+    {
+      origin: o.fetch('origin', nil),
+      branch: o.fetch('branch', nil),
+      id: o.fetch('public_id', nil),
+    }
+  end
+  
   def delete_many_by_origin_branch(cn, origin, branch)
     connection[cn].delete_many(origin: origin, branch: branch)
   end
