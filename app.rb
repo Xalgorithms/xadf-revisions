@@ -31,7 +31,7 @@ if ENV['RACK_ENV'] == 'test'
   disable(:show_exceptions)
 end
 
-# Used by Marathon healthcheck
+# healthcheck
 get "/status" do
   json(status: :live)
 end
@@ -46,27 +46,6 @@ post '/actions' do
     json(status: 'failed_parse', reason: 'The supplied body was not valid JSON')
   end
 end
-
-# ['rules', 'tables', 'packages'].each do |n|
-#   get "/#{n}" do
-#     json(documents.all(n))
-#   end
-  
-#   get "/#{n}/:id" do
-#   json(documents.one(n, params[:id]))
-#   end
-# end
-
-# post '/rules' do
-#   o = JSON.parse(request.body.read)
-  
-#   json({ id: documents.store_unpackaged_rule(o) })
-# end
-
-# post '/tables' do
-#   o = JSON.parse(request.body.read)
-#   json({ id: documents.store_unpackaged_table(o) })
-# end
 
 def determine_branch(gho)
   n = gho.fetch('ref', '').split('/').last
