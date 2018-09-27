@@ -21,9 +21,29 @@
 # You should have received a copy of the GNU Affero General Public
 # License along with this program. If not, see
 # <http://www.gnu.org/licenses/>.
-require 'mongo'
+require 'digest'
+require 'faker'
 
-cl = Mongo::Client.new('mongodb://127.0.0.1:27017/interlibr')
-['rules', 'table_data'].each do |cn|
-  cl[cn].delete_many({})
+require_relative '../../lib/ids'
+
+describe Ids do
+  include Radish::Randomness
+  include Ids
+
+  it 'should generate an id based on ns, name, version' do
+    types = ['rule', 'table']
+    rand_array do
+      {
+        'type'    => types.sample,
+        'ns'      => "#{Faker::Lorem.word}",
+        'name'    => "#{Faker::Lorem.word}",
+        'version' => "#{Faker::App.semantic_version}",
+      }
+    end.each do |vals|
+      k = "#{vals['type'].first.capitalize}(#{vals['ns']}:#{vals['name']}:#{vals['version']})"
+      id = Digest::SHA1.hexdigest(k)
+
+      expect(make_id(vals['type'], vals.slice('ns', 'name', 'version'))).to eql(id)
+    end
+  end
 end

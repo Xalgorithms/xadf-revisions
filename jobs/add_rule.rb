@@ -21,9 +21,31 @@
 # You should have received a copy of the GNU Affero General Public
 # License along with this program. If not, see
 # <http://www.gnu.org/licenses/>.
-require 'mongo'
+require_relative './add_xalgo'
 
-cl = Mongo::Client.new('mongodb://127.0.0.1:27017/interlibr')
-['rules', 'table_data'].each do |cn|
-  cl[cn].delete_many({})
+module Jobs
+  class AddRule < AddXalgo
+    def initialize
+      super('rule')
+    end
+    
+    def perform_additional(o)
+      # NOTE: for now, the parser guarantees us that the left is
+      # the reference and the right is the value to
+      # match... Assuming this is very fragile thinking that
+      # should eventually be changed
+      applicables = o[:doc].fetch('whens', {}).inject([]) do |arr, (section, whens)|
+        arr + whens.map do |wh|
+          {
+            section: section,
+            key:     wh['expr']['left']['key'],
+            op:      wh['expr']['op'],
+            val:     wh['expr']['right']['value'],
+            rule_id: o[:public_id],
+          }
+        end
+      end
+      Storage.instance.tables.store_applicables(applicables)
+    end
+  end
 end

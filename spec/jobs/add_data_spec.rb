@@ -21,9 +21,36 @@
 # You should have received a copy of the GNU Affero General Public
 # License along with this program. If not, see
 # <http://www.gnu.org/licenses/>.
-require 'mongo'
+require 'faker'
+require 'multi_json'
 
-cl = Mongo::Client.new('mongodb://127.0.0.1:27017/interlibr')
-['rules', 'table_data'].each do |cn|
-  cl[cn].delete_many({})
+require_relative '../../jobs/add_data'
+require_relative '../../jobs/storage'
+require_relative './add_xalgo_checks'
+
+describe Jobs::AddData do
+  include Radish::Randomness
+
+  it 'should store JSON from the arguments' do
+    rand_times do
+      data = rand_document
+      args = rand_document
+
+      expect(Jobs::Storage.instance.docs).to receive(:store_table_data).with(args.merge('data' => data))
+      
+      job = Jobs::AddData.new
+      job.perform(args.merge('data' => MultiJson.encode(data)))
+    end
+  end
+
+  it 'should do nothing if data is not JSON' do
+    rand_times do
+      args = rand_document
+
+      expect(Jobs::Storage.instance.docs).to_not receive(:store_table_data)
+      
+      job = Jobs::AddData.new
+      job.perform(args.merge('data' => Faker::Lorem.paragraph))
+    end
+  end
 end

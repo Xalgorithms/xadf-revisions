@@ -21,9 +21,21 @@
 # You should have received a copy of the GNU Affero General Public
 # License along with this program. If not, see
 # <http://www.gnu.org/licenses/>.
-require 'mongo'
+require 'sidekiq'
 
-cl = Mongo::Client.new('mongodb://127.0.0.1:27017/interlibr')
-['rules', 'table_data'].each do |cn|
-  cl[cn].delete_many({})
+require_relative './storage'
+
+module Jobs
+  class RemoveMeta
+    include Sidekiq::Worker
+
+    def perform(o)
+      ks = ['origin', 'branch', 'rule_id']
+      (origin, branch, rule_id) = ks.map { |k| o.fetch(k, nil) }
+
+      if origin && branch && rule_id
+        Storage.instance.tables.remove_meta(origin, branch, rule_id)
+      end
+    end
+  end
 end

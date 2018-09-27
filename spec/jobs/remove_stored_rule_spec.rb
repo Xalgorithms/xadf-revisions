@@ -21,9 +21,32 @@
 # You should have received a copy of the GNU Affero General Public
 # License along with this program. If not, see
 # <http://www.gnu.org/licenses/>.
-require 'mongo'
+require 'active_support/core_ext/hash'
+require 'faker'
 
-cl = Mongo::Client.new('mongodb://127.0.0.1:27017/interlibr')
-['rules', 'table_data'].each do |cn|
-  cl[cn].delete_many({})
+require_relative '../../jobs/remove_stored_rule'
+require_relative '../../jobs/storage'
+
+describe Jobs::RemoveStoredRule do
+  include Radish::Randomness
+
+  it 'should trigger removals on document storage' do
+    rand_times do
+      rule_id = Faker::Number.hexadecimal(40)
+
+      expect(Jobs::Storage.instance.docs).to receive(:remove_rule_by_id).with(rule_id)
+
+      job = Jobs::RemoveStoredRule.new
+      job.perform(rand_document.merge('rule_id' => rule_id))
+    end
+  end
+
+  it 'should not trigger removals if rule_id is missing' do
+    rand_times do
+      expect(Jobs::Storage.instance.docs).to_not receive(:remove_rule_by_id)
+      
+      job = Jobs::RemoveStoredRule.new
+      job.perform(rand_document)
+    end
+  end
 end

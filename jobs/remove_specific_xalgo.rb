@@ -21,9 +21,29 @@
 # You should have received a copy of the GNU Affero General Public
 # License along with this program. If not, see
 # <http://www.gnu.org/licenses/>.
-require 'mongo'
+require 'sidekiq'
 
-cl = Mongo::Client.new('mongodb://127.0.0.1:27017/interlibr')
-['rules', 'table_data'].each do |cn|
-  cl[cn].delete_many({})
+require_relative './storage'
+require_relative '../lib/ids'
+
+module Jobs
+  class RemoveSpecificXalgo
+    include Ids
+    include Sidekiq::Worker
+
+    def initialize(doc_type)
+      @doc_type = doc_type
+    end
+    
+    def perform(o)
+      ks = ['ns', 'name', 'version']
+      (ns, name, version) = ks.map { |k| o.fetch(k, nil) }
+
+      if ns && name && version
+        rule_id = make_id(@doc_type, 'ns' => ns, 'name' => name, 'version' => version)
+        Storage.instance.docs.remove_rule_by_id(rule_id)
+        Storage.instance.tables.purge_rule(rule_id)
+      end
+    end
+  end
 end

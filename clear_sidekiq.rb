@@ -21,9 +21,11 @@
 # You should have received a copy of the GNU Affero General Public
 # License along with this program. If not, see
 # <http://www.gnu.org/licenses/>.
-require 'mongo'
+require 'sidekiq/api'
 
-cl = Mongo::Client.new('mongodb://127.0.0.1:27017/interlibr')
-['rules', 'table_data'].each do |cn|
-  cl[cn].delete_many({})
+stats = Sidekiq::Stats.new
+stats.queues.keys.each do |n|
+  q = Sidekiq::Queue.new(n)
+  puts "! clearing #{n}"
+  q.clear
 end

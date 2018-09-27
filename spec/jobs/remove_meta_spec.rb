@@ -21,9 +21,35 @@
 # You should have received a copy of the GNU Affero General Public
 # License along with this program. If not, see
 # <http://www.gnu.org/licenses/>.
-require 'mongo'
+require 'active_support/core_ext/hash'
+require 'faker'
 
-cl = Mongo::Client.new('mongodb://127.0.0.1:27017/interlibr')
-['rules', 'table_data'].each do |cn|
-  cl[cn].delete_many({})
+require_relative '../../jobs/remove_meta'
+require_relative '../../jobs/storage'
+
+describe Jobs::RemoveMeta do
+  include Radish::Randomness
+
+  it 'should trigger removals on document storage' do
+    rand_times do
+      origin = Faker::Internet.url
+      branch = Faker::Lorem.word
+      rule_id = Faker::Number.hexadecimal(40)
+
+      expect(Jobs::Storage.instance.tables).to receive(:remove_meta).with(origin, branch, rule_id)
+
+      job = Jobs::RemoveMeta.new
+      job.perform(rand_document.merge('origin' => origin, 'branch' => branch, 'rule_id' => rule_id))
+    end
+  end
+
+  it 'should do nothing if the args are not specified' do
+    keys = ['origin', 'branch', 'rule_id']
+    rand_times do
+      expect(Jobs::Storage.instance.tables).to_not receive(:remove_meta)
+
+      job = Jobs::RemoveMeta.new
+      job.perform(rand_document.merge(keys.sample(2).inject({}) { |o, k| o.merge(k => k) }))
+    end
+  end
 end

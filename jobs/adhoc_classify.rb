@@ -21,9 +21,18 @@
 # You should have received a copy of the GNU Affero General Public
 # License along with this program. If not, see
 # <http://www.gnu.org/licenses/>.
-require 'mongo'
-
-cl = Mongo::Client.new('mongodb://127.0.0.1:27017/interlibr')
-['rules', 'table_data'].each do |cn|
-  cl[cn].delete_many({})
+module Jobs
+  module AdhocClassify
+    def classify(o, parsed)
+      {
+        ns: o['ns'],
+        name: o['name'],
+        origin: 'origin:adhoc',
+        branch: 'branch:adhoc',
+        version: get(parsed, 'meta.version', '999.999.999'),
+        runtime: get(parsed, 'meta.runtime', nil),
+        criticality: get(parsed, 'meta.criticality', 'normal'),
+      }
+    end
+  end
 end

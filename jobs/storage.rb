@@ -21,9 +21,21 @@
 # You should have received a copy of the GNU Affero General Public
 # License along with this program. If not, see
 # <http://www.gnu.org/licenses/>.
-require 'mongo'
+require 'singleton'
 
-cl = Mongo::Client.new('mongodb://127.0.0.1:27017/interlibr')
-['rules', 'table_data'].each do |cn|
-  cl[cn].delete_many({})
+require_relative '../lib/documents'
+require_relative '../lib/tables'
+
+module Jobs
+  class Storage
+    include Singleton
+
+    attr_reader :docs
+    attr_reader :tables
+    
+    def initialize
+      @docs = Documents.new
+      @tables = Tables.new
+    end
+  end
 end

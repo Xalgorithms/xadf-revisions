@@ -21,9 +21,40 @@
 # You should have received a copy of the GNU Affero General Public
 # License along with this program. If not, see
 # <http://www.gnu.org/licenses/>.
-require 'mongo'
+require 'multi_json'
+require 'sidekiq'
 
-cl = Mongo::Client.new('mongodb://127.0.0.1:27017/interlibr')
-['rules', 'table_data'].each do |cn|
-  cl[cn].delete_many({})
+require_relative './storage'
+
+module Jobs
+  class AddData
+    include Sidekiq::Worker
+
+    def perform(o)
+      maybe_parse(o.fetch('data', '')) do |json|
+        args = {
+          'data' => json,
+        }.merge(generate_additional_content)
+        
+        Storage.instance.docs.store_table_data(o.merge(args))
+      end
+
+      false
+    end
+
+    private
+
+    def generate_additional_content
+      {}
+    end
+    
+    def maybe_parse(json_s)
+      begin
+        json = MultiJson.decode(json_s)
+        yield(json) if json
+      rescue MultiJson::ParseError => err
+        LocalLogger.error('failed to parse table data', s: json_s)
+      end
+    end
+  end
 end

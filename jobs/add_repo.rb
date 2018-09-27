@@ -21,9 +21,43 @@
 # You should have received a copy of the GNU Affero General Public
 # License along with this program. If not, see
 # <http://www.gnu.org/licenses/>.
-require 'mongo'
+require 'sidekiq'
 
-cl = Mongo::Client.new('mongodb://127.0.0.1:27017/interlibr')
-['rules', 'table_data'].each do |cn|
-  cl[cn].delete_many({})
+require_relative '../lib/github'
+require_relative './add_rule'
+require_relative './add_table'
+require_relative './add_data'
+require_relative './storage'
+
+module Jobs
+  class AddRepo
+    include Sidekiq::Worker
+
+    def perform(o)
+      @github ||= GitHub.new
+      @jobs ||= {
+        'rule'  => Jobs::AddRule,
+        'table' => Jobs::AddTable,
+        'json'  => Jobs::AddData,
+      }
+
+      url = o.fetch('url', nil)
+      if url
+        items = @github.get(url)
+        Jobs::Storage.instance.tables.store_repository(clone_url: url)
+        items.each do |o|
+          job_kl = @jobs.fetch(o[:type], nil)
+          if job_kl
+            job_kl.perform_async(o)
+          else
+            LocalLogger.error('no job class found', type: o[:type])
+          end
+        end
+      else
+        LocalLogger.warn('no url provided')
+      end
+
+      false
+    end
+  end
 end

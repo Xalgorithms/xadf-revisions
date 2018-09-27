@@ -21,36 +21,42 @@
 # You should have received a copy of the GNU Affero General Public
 # License along with this program. If not, see
 # <http://www.gnu.org/licenses/>.
-source 'https://rubygems.org'
+require 'faker'
+require 'multi_json'
 
-ruby '2.4.2'
+require_relative '../../jobs/add_adhoc_data'
+require_relative '../../jobs/storage'
+require_relative './add_xalgo_checks'
 
-gem 'activesupport'
-gem 'cassandra-driver'
-gem 'countries'
-gem 'mongo'
-gem 'multi_json'
-gem 'puma'
-gem 'redis'
-gem 'rugged'
-gem 'sidekiq'
-gem 'sinatra', "~> 2.0.1"
-gem 'sinatra-contrib', "~> 2.0.1"
-gem 'tzinfo-data'
+describe Jobs::AddAdhocData do
+  include Radish::Randomness
 
-gem 'xa-rules', git: 'https://github.com/Xalgorithms/xa-rules.git', tag: 'v0.4.0'
-gem 'radish',   git: 'https://github.com/karfai/radish.git',        tag: 'v0.1.0'
+  it 'should store JSON from the arguments' do
+    rand_times do
+      data = rand_document
+      args = rand_document
 
-group :development do
-  gem 'faraday'
-  gem 'faraday_middleware'
-  gem 'pry'
-  gem 'rerun'
-end
+      ex = {
+        'origin' => 'origin:adhoc',
+        'branch' => 'branch:adhoc',
+        'data' => data,
+      }
+      
+      expect(Jobs::Storage.instance.docs).to receive(:store_table_data).with(args.merge(ex))
+      
+      job = Jobs::AddAdhocData.new
+      job.perform(args.merge('data' => MultiJson.encode(data)))
+    end
+  end
 
-group :development, :test do
-  gem 'faker'
-  gem 'fuubar'
-  gem 'rack-test'
-  gem 'rspec'
+  it 'should do nothing if data is not JSON' do
+    rand_times do
+      args = rand_document
+
+      expect(Jobs::Storage.instance.docs).to_not receive(:store_table_data)
+      
+      job = Jobs::AddAdhocData.new
+      job.perform(args.merge('data' => Faker::Lorem.paragraph))
+    end
+  end
 end
