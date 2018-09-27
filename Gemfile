@@ -42,11 +42,13 @@ gem 'xa-rules', git: 'https://github.com/Xalgorithms/xa-rules.git', tag: 'v0.4.0
 gem 'radish',   git: 'https://github.com/karfai/radish.git',        tag: 'v0.1.0'
 
 group :development do
-  gem 'rerun'
+  gem 'faraday'
+  gem 'faraday_middleware'
   gem 'pry'
+  gem 'rerun'
 end
 
-group :test do
+group :development, :test do
   gem 'faker'
   gem 'fuubar'
   gem 'rack-test'
