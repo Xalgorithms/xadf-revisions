@@ -53,7 +53,7 @@ class LocalLogger
 
   def initialize
     @logger = nil
-    if ENV.fetch('RACK_ENV') != 'test'
+    if ENV.fetch('RACK_ENV', nil) != 'test'
       @logger = Logger.new(STDOUT)
     end
   end
