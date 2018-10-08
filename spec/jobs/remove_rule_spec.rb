@@ -46,7 +46,6 @@ describe Jobs::RemoveRule do
       ns = Faker::Lorem.word
       name = Faker::Lorem.word
       version = Faker::App.semantic_version
-      data = Faker::Lorem.paragraph
 
       rule_id = make_id('rule', 'ns' => ns, 'name' => name, 'version' => version)
 
@@ -57,17 +56,13 @@ describe Jobs::RemoveRule do
 
       job = Jobs::RemoveRule.new
       args = {
-        'origin' => origin,
-        'branch' => branch,
-        'ns'     => ns,
-        'name'   => name,
-        'data'   => data,
+        'origin'  => origin,
+        'branch'  => branch,
+        'ns'      => ns,
+        'name'    => name,
+        'version' => version,
       }
 
-      parsed = { 'meta' => { 'version' => version } }
-
-      expect(job).to receive(:parse_rule).with(data).and_return(parsed)
-      
       job.perform(rand_document.merge(args))
     end
   end
