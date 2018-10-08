@@ -473,6 +473,38 @@ describe Tables do
     end
   end
 
+  it 'should not remove applicables by rule_id if there are no query results' do
+    rand_times do
+      rule_id = Faker::Number.hexadecimal(40)
+      tables = Tables.new
+
+      results = rand_array do
+        { 'section' => Faker::Lorem.word, 'key' => Faker::Lorem.word }
+      end
+      
+      validate = build_validation(tables, true, OpenStruct.new(rows: []))
+
+      expect(tables).to receive(:unless_rule_in_use).with(rule_id).and_yield
+      tables.remove_applicable(rule_id)
+
+      exs = [
+        {
+          tbl: 'whens',
+          keys: ['section', 'key'],
+          conds: [
+            { key: 'rule_id', value: "'#{rule_id}'" },
+          ],
+        },
+        {
+          tbl: 'whens',
+          conds: { 'rule_id' => "'#{rule_id}'" }
+        },
+      ]
+      check_many(validate, exs)
+    end
+  end
+
+
   it 'should remove applicables by rule_id' do
     rand_times do
       rule_id = Faker::Number.hexadecimal(40)

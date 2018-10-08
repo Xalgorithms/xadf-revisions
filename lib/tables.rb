@@ -330,9 +330,9 @@ class Tables
   end
 
   def within_batch
+    qs = yield
     execute do
-      qs = yield
       'BEGIN BATCH ' + qs.join(';') + '; APPLY BATCH;'
-    end
+    end if qs.any?
   end
 end
