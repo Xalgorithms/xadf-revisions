@@ -26,10 +26,8 @@ require 'faker'
 
 require_relative '../../jobs/add_rule'
 require_relative '../../jobs/add_table'
-require_relative '../../jobs/add_data'
 require_relative '../../jobs/remove_rule'
 require_relative '../../jobs/remove_table'
-require_relative '../../jobs/remove_data'
 require_relative '../../jobs/remove_effective'
 require_relative '../../jobs/remove_applicable'
 require_relative '../../jobs/remove_meta'
@@ -45,7 +43,6 @@ describe Jobs::UpdateRepo do
     {
       'rule'  => Jobs::AddRule,
       'table' => Jobs::AddTable,
-      'json'  => Jobs::AddData,
     }
   end
 
@@ -53,7 +50,6 @@ describe Jobs::UpdateRepo do
     {
       'rule'  => Jobs::RemoveRule,
       'table' => Jobs::RemoveTable,
-      'json'  => Jobs::RemoveData,
     }
   end
 

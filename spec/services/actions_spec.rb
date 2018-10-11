@@ -34,7 +34,6 @@ describe Services::Actions do
         repository: Jobs::AddRepo,
         rule:       Jobs::AddAdhocRule,
         table:      Jobs::AddAdhocTable,
-        data:       Jobs::AddAdhocData,
       },
       update: {
         repository: Jobs::UpdateRepo,
@@ -43,7 +42,6 @@ describe Services::Actions do
         repository: Jobs::RemoveRepo,
         rule:       Jobs::RemoveSpecificRule,
         table:      Jobs::RemoveSpecificTable,
-        data:       Jobs::RemoveSpecificData,
       },
     }
     

@@ -26,7 +26,6 @@ require 'faker'
 require_relative '../../jobs/add_repo'
 require_relative '../../jobs/add_rule'
 require_relative '../../jobs/add_table'
-require_relative '../../jobs/add_data'
 require_relative '../../jobs/storage'
 require_relative '../../lib/github'
 
@@ -37,7 +36,6 @@ describe Jobs::AddRepo do
     jobs = {
       'rule'  => Jobs::AddRule,
       'table' => Jobs::AddTable,
-      'json'  => Jobs::AddData,
     }
 
     url = 'https://github.com/Xalgorithms/testing-rules.git'

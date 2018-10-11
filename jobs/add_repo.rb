@@ -26,7 +26,6 @@ require 'sidekiq'
 require_relative '../lib/github'
 require_relative './add_rule'
 require_relative './add_table'
-require_relative './add_data'
 require_relative './storage'
 
 module Jobs
@@ -38,7 +37,6 @@ module Jobs
       @jobs ||= {
         'rule'  => Jobs::AddRule,
         'table' => Jobs::AddTable,
-        'json'  => Jobs::AddData,
       }
 
       url = o.fetch('url', nil)

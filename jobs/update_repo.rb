@@ -25,14 +25,12 @@ require 'sidekiq'
 
 require_relative './add_rule'
 require_relative './add_table'
-require_relative './add_data'
 require_relative './remove_applicable'
 require_relative './remove_effective'
 require_relative './remove_meta'
 require_relative './remove_rule'
 require_relative './remove_stored_rules'
 require_relative './remove_table'
-require_relative './remove_data'
 require_relative './storage'
 
 module Jobs
@@ -52,12 +50,10 @@ module Jobs
         update: {
           'rule'  => Jobs::AddRule,
           'table' => Jobs::AddTable,
-          'json'  => Jobs::AddData,
         },
         remove: {
           'rule'  => Jobs::RemoveRule,
           'table' => Jobs::RemoveTable,
-          'json'  => Jobs::RemoveData,
         },
       }
 
