@@ -77,6 +77,15 @@ module Specs
             verify_fn.call if verify_fn
           end
 
+          if props.key?(:expected_data)
+            expect(::Jobs::Storage.instance.docs).to receive(:store_table_data).with(public_id, props[:expected_data])
+            args = args.merge('table_data' => {
+                                'type' => 'json',
+                                'content' => MultiJson.encode(props[:expected_data]),
+                              })
+          end
+
+          
           rv = job.perform(args)
           expect(rv).to eql(false)
         end

@@ -21,9 +21,11 @@
 # You should have received a copy of the GNU Affero General Public
 # License along with this program. If not, see
 # <http://www.gnu.org/licenses/>.
+require 'multi_json'
 require 'sidekiq'
 
 require_relative './add_xalgo'
+require_relative './storage'
 
 module Jobs
   class AddTable < AddXalgo
@@ -31,6 +33,19 @@ module Jobs
 
     def initialize
       super('table')
+    end
+
+    def specific_classification(o, parsed)
+      {}.tap do |rv|
+        data = o.fetch('table_data', nil)
+        if data && data.key?('type') && data.key?('content') && data['type'] == 'json'
+          rv[:table_content] = MultiJson.decode(data['content'])
+        end
+      end
+    end
+
+    def perform_additional(o)
+      Storage.instance.docs.store_table_data(o[:public_id], o[:table_content])
     end
   end
 end

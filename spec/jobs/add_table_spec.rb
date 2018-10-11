@@ -31,13 +31,15 @@ describe Jobs::AddTable do
   include Radish::Randomness
 
   it "should always store the document, meta and effective (on any branch)" do
+    table_data = rand_array { rand_document }
     rand_array { Faker::Lorem.word }.each do |branch|
-      verify_storage(Jobs::AddTable, 'table', nil, nil, branch: branch)
+      verify_storage(Jobs::AddTable, 'table', nil, nil, branch: branch, expected_data: table_data)
     end
   end
   
   it "should always store the document, meta and effective (on master)" do
-    verify_storage(Jobs::AddTable, 'table', nil, nil, branch: 'master')
+    table_data = rand_array { rand_document }
+    verify_storage(Jobs::AddTable, 'table', nil, nil, branch: 'master', expected_data: table_data)
   end
   
   it "should not store the document, meta and effective if the rule exists (on production)" do
@@ -45,6 +47,7 @@ describe Jobs::AddTable do
   end
   
   it "should store the document, meta and effective if the rule does not exist (on production)" do
-    verify_storage(Jobs::AddTable, 'table', nil, nil, branch: 'production', should_store_rule: true)
+    table_data = rand_array { rand_document }
+    verify_storage(Jobs::AddTable, 'table', nil, nil, branch: 'production', should_store_rule: true, expected_data: table_data)
   end
 end

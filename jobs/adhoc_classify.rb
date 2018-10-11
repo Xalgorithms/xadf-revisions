@@ -23,7 +23,7 @@
 # <http://www.gnu.org/licenses/>.
 module Jobs
   module AdhocClassify
-    def classify(o, parsed)
+    def classify_meta(o, parsed)
       {
         ns: o['ns'],
         name: o['name'],

@@ -76,7 +76,7 @@ module Jobs
       perform_additional(@classified)
     end
 
-    def classify(o, parsed)
+    def classify_meta(o, parsed)
       {
         ns: o['ns'],
         name: o['name'],
@@ -90,13 +90,17 @@ module Jobs
     
     def parse_and_classify(o)
       parsed = send("parse_#{@doc_type}", o['data'])
-      meta = classify(o, parsed)
+      meta = classify_meta(o, parsed)
 
       {
         public_id: make_id(@doc_type, meta.slice(:ns, :name, :version).with_indifferent_access),
         meta: meta,
         doc: parsed,
-      }
+      }.merge(specific_classification(o, parsed))
+    end
+
+    def specific_classification(o, parsed)
+      {}
     end
     
     def perform_additional(classified)

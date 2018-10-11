@@ -36,6 +36,7 @@ describe Jobs::AddTable do
       props = {
         origin: 'origin:adhoc',
         branch: 'branch:adhoc',
+        expected_data: rand_array { rand_document }
       }
       verify_storage(Jobs::AddAdhocTable, 'table', nil, nil, props)
     end
