@@ -59,19 +59,20 @@ describe Documents do
 
   it 'should store table data' do
     rand_array do
-      rand_array do
-        rand_document
-      end
-    end.each do |table_data|
+      {
+        rule_id: Faker::Number.hexadecimal(40),
+        content: rand_array { rand_document }
+      }
+    end.each do |o|
       conn = double('Fake: mongo connection')
       coll = double('Fake: mongo rules collection')
       
       expect(conn).to receive('[]').with('table_data').and_return(coll)
-      expect(coll).to receive(:insert_one).with(table_data)
+      expect(coll).to receive(:insert_one).with(rule_id: o[:rule_id], content: o[:content])
 
       docs = Documents.new
       expect(docs).to receive(:connection).and_return(conn)
-      docs.store_table_data(table_data)
+      docs.store_table_data(o[:rule_id], o[:content])
     end
   end
 

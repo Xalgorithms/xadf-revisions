@@ -40,8 +40,8 @@ class Documents
     connection['rules'].insert_one(meta.merge(content: doc, public_id: id, thing: t))
   end
 
-  def store_table_data(data)
-    connection['table_data'].insert_one(data)
+  def store_table_data(rule_id, content)
+    connection['table_data'].insert_one(rule_id: rule_id, content: content)
   end
 
   def remove_rules_by_origin_branch(origin, branch)
