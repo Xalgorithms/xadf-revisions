@@ -27,53 +27,75 @@ require_relative '../../lib/documents'
 
 describe Documents do
   include Radish::Randomness
-  
-  it 'should store a document in the rules collection with a generated id' do
-    types = ['rule', 'table']
 
-    rand_array do
-      {
-        doc: {
-          'meta' => { 'version' => Faker::App.semantic_version },
-        },
-        src: rand_document.merge({
-                                   'ns' => Faker::Lorem.word,
-                                   'name' => Faker::Lorem.word,
-                                 }),
-        id: Faker::Number.hexadecimal(40),
-      }
-    end.each do |o|
-      th = types.sample
-      ex_inserted_doc = o[:src].merge(content: o[:doc], public_id: o[:id], thing: th)
-      
-      conn = double('Fake: mongo connection')
-      coll = double('Fake: mongo rules collection')
+  def verify_rule_storage(any)
+    things = ['rule', 'table']
+
+    rand_times do
+      t = things.sample
+      rule_id = Faker::Number.hexadecimal(40)
+      meta = rand_document
+      doc = rand_document
+
+      ex_doc = meta.merge(content: doc, public_id: rule_id, thing: t)
+
+      conn = double('fake/mongo/connection')
+      coll = double('fake/mongo/collection')
+      view = double('fake/mongo/find_view')
       expect(conn).to receive('[]').with('rules').and_return(coll)
-      expect(coll).to receive(:insert_one).with(ex_inserted_doc)
+      expect(view).to receive(:any?).and_return(any)
+      expect(coll).to receive(:find).with(public_id: rule_id).and_return(view)
 
+      if any
+        expect(coll).to receive(:update_one).with({ public_id: rule_id }, { '$set' => { content: doc } })
+      else
+        expect(coll).to receive(:insert_one).with(ex_doc)
+      end
+      
       docs = Documents.new
       expect(docs).to receive(:connection).and_return(conn)
-      docs.store_rule(th, o[:id], o[:src], o[:doc])
+      docs.store_rule(t, rule_id, meta, doc)
     end
   end
+  
+  it 'should store a document in the rules collection' do
+    verify_rule_storage(false)
+  end
 
-  it 'should store table data' do
-    rand_array do
-      {
-        rule_id: Faker::Number.hexadecimal(40),
-        content: rand_array { rand_document }
-      }
-    end.each do |o|
-      conn = double('Fake: mongo connection')
-      coll = double('Fake: mongo rules collection')
+  it 'should update the rule content if it exists (determined by ns, name, version)' do
+    verify_rule_storage(true)
+  end
+
+  def verify_table_data_storage(any)
+    rand_times do
+      rule_id = Faker::Number.hexadecimal(40),
+      content = rand_array { rand_document }
+
+      conn = double('fake/mongo/connection')
+      coll = double('fake/mongo/collection')
+      view = double('fake/mongo/find_view')
       
       expect(conn).to receive('[]').with('table_data').and_return(coll)
-      expect(coll).to receive(:insert_one).with(rule_id: o[:rule_id], content: o[:content])
+      expect(view).to receive(:any?).and_return(any)
+      expect(coll).to receive(:find).with(rule_id: rule_id).and_return(view)
+      if any
+        expect(coll).to receive(:update_one).with({ rule_id: rule_id }, { '$set' => { content: content } })
+      else
+        expect(coll).to receive(:insert_one).with(rule_id: rule_id, content: content) if !any
+      end
 
       docs = Documents.new
       expect(docs).to receive(:connection).and_return(conn)
-      docs.store_table_data(o[:rule_id], o[:content])
+      docs.store_table_data(rule_id, content)
     end
+  end
+  
+  it 'should store table data' do
+    verify_table_data_storage(false)
+  end
+
+  it 'should update the content of existing table data' do
+    verify_table_data_storage(true)
   end
 
   it 'should remove rules by origin, branch' do

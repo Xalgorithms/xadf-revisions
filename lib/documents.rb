@@ -36,12 +36,21 @@ class Documents
   end
 
   def store_rule(t, id, meta, doc)
-    #public_id = make_id(t, src.merge('version' => doc.fetch('meta', {}).fetch('version', nil)))
-    connection['rules'].insert_one(meta.merge(content: doc, public_id: id, thing: t))
+    coll = connection['rules']
+    if coll.find(public_id: id).any?
+      coll.update_one({ public_id: id }, { '$set' => { content: doc } })
+    else
+      coll.insert_one(meta.merge(content: doc, public_id: id, thing: t))
+    end
   end
 
   def store_table_data(rule_id, content)
-    connection['table_data'].insert_one(rule_id: rule_id, content: content)
+    coll = connection['table_data']
+    if coll.find(rule_id: rule_id).any?
+      coll.update_one({ rule_id: rule_id }, { '$set' => { content: content } })
+    else
+      coll.insert_one(rule_id: rule_id, content: content)
+    end
   end
 
   def remove_rules_by_origin_branch(origin, branch)
